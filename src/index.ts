@@ -5,7 +5,12 @@ import type { Skill } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { discoverRoles } from "./discovery.js";
-import { clearActiveRoleDisplay, emitActiveRoleDisplay, shouldShowFallbackWidget } from "./display.js";
+import {
+	PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT,
+	clearActiveRoleDisplay,
+	emitActiveRoleDisplay,
+	shouldShowFallbackWidget,
+} from "./display.js";
 import { loadRolesConfig } from "./config.js";
 import {
 	buildRoleSwitchDescription,
@@ -43,6 +48,23 @@ const ROLE_SWITCH_PARAMETERS = Type.Object({
 	role: Type.String({ description: "Target role id." }),
 	reason: Type.Optional(Type.String({ description: "Optional short rationale for observability only." })),
 });
+
+function subscribeEventBus(
+	eventBus: {
+		on: (event: string, handler: (payload: unknown) => void) => unknown;
+		off?: (event: string, handler: (payload: unknown) => void) => void;
+		removeListener?: (event: string, handler: (payload: unknown) => void) => void;
+	},
+	event: string,
+	handler: (payload: unknown) => void,
+): () => void {
+	const subscription = eventBus.on(event, handler);
+	if (typeof subscription === "function") return subscription as () => void;
+	return () => {
+		eventBus.off?.(event, handler);
+		eventBus.removeListener?.(event, handler);
+	};
+}
 
 function hiddenMessage(customType: string, content: string): AgentMessage {
 	return {
@@ -94,7 +116,13 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	let lastPersistedKey = "";
 	let lastKnownSkills: Skill[] = [];
 	let shortcutRegistered = false;
+	let fancyEditorReady = false;
+	let activeUiContext: ExtensionContext | undefined;
 	const shownDiagnostics = new Set<string>();
+	const unsubscribeFancyEditorReady = subscribeEventBus(pi.events, PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => {
+		fancyEditorReady = payload === true;
+		if (activeUiContext?.hasUI) updateDisplay(activeUiContext);
+	});
 
 	function refreshCatalog(cwd: string): void {
 		loadedConfig = loadRolesConfig(cwd);
@@ -158,13 +186,9 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	function updateDisplay(ctx: ExtensionContext): void {
 		const role = currentRole();
 		if (!role || !ctx.hasUI) return;
-		const eventBus = pi.events as unknown as { listenerCount?: (event: string) => number };
-		const listenerCount = typeof eventBus.listenerCount === "function"
-			? eventBus.listenerCount(PI_AGENT_ROLES_ACTIVE_ROLE_EVENT)
-			: 0;
 		emitActiveRoleDisplay(pi.events as never, role);
 		if (shouldShowFallbackWidget({
-			fancyEditorListenerCount: listenerCount,
+			fancyEditorReady,
 			showWidgetWhenFancyEditorMissing: loadedConfig?.config.showWidgetWhenFancyEditorMissing ?? true,
 		})) {
 			ctx.ui.setWidget(
@@ -343,6 +367,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	}));
 
 	pi.on("session_start", async (_event, ctx) => {
+		activeUiContext = ctx;
 		refreshCatalog(ctx.cwd);
 		surfaceDiagnostics(ctx);
 		if (!shortcutRegistered) {
@@ -466,6 +491,9 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.on("session_shutdown", (_event, ctx) => {
+		activeUiContext = undefined;
+		fancyEditorReady = false;
+		unsubscribeFancyEditorReady();
 		clearActiveRoleDisplay(pi.events as never);
 		if (ctx.hasUI) ctx.ui.setWidget("pi-agent-roles", undefined);
 	});

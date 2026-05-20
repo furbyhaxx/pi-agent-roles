@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import {
+	PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT,
 	PI_AGENT_ROLES_ACTIVE_ROLE_EVENT,
 	clearActiveRoleDisplay,
 	emitActiveRoleDisplay,
@@ -35,6 +36,7 @@ const builderRole = {
 const events = new EventEmitter();
 const emitted: unknown[] = [];
 events.on(PI_AGENT_ROLES_ACTIVE_ROLE_EVENT, (payload) => emitted.push(payload));
+events.on(PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => emitted.push({ ready: payload }));
 
 emitActiveRoleDisplay(events as never, builderRole);
 assert.deepEqual(emitted.at(-1), { name: "builder", label: "Builder", color: "#ff8800" });
@@ -44,8 +46,8 @@ assert.equal(emitted.at(-1), null);
 
 assert.equal(resolveRoleManagerLayout(140), "wide");
 assert.equal(resolveRoleManagerLayout(80), "compact");
-assert.equal(shouldShowFallbackWidget({ fancyEditorListenerCount: 0, showWidgetWhenFancyEditorMissing: true }), true);
-assert.equal(shouldShowFallbackWidget({ fancyEditorListenerCount: 1, showWidgetWhenFancyEditorMissing: true }), false);
-assert.equal(shouldShowFallbackWidget({ fancyEditorListenerCount: 0, showWidgetWhenFancyEditorMissing: false }), false);
+assert.equal(shouldShowFallbackWidget({ fancyEditorReady: false, showWidgetWhenFancyEditorMissing: true }), true);
+assert.equal(shouldShowFallbackWidget({ fancyEditorReady: true, showWidgetWhenFancyEditorMissing: true }), false);
+assert.equal(shouldShowFallbackWidget({ fancyEditorReady: false, showWidgetWhenFancyEditorMissing: false }), false);
 
 console.log("role display tests passed");

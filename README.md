@@ -90,7 +90,7 @@ Review code and plans.
 enter select • v details • c create • e edit • esc close
 ```
 
-Fallback widget when `pi-fancy-editor` is not listening:
+Fallback widget when `pi-fancy-editor` is not active/ready:
 
 ```text
 [Role: Builder]

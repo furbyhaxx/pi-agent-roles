@@ -1,6 +1,6 @@
 {
   "name": "@furbyhaxx/pi-agent-roles",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Pi extension package for session-scoped runtime roles with model, thinking, tool, prompt, and skill policy switching.",
   "scripts": {
     "test": "npm run typecheck && npm run test:unit && npm run test:harness",

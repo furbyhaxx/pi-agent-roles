@@ -1,6 +1,7 @@
 import { PI_AGENT_ROLES_ACTIVE_ROLE_EVENT, type RoleDisplayPayload, type ResolvedRole } from "./types.js";
 
 export { PI_AGENT_ROLES_ACTIVE_ROLE_EVENT } from "./types.js";
+export const PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT = "pi-fancy-editor:role-display-ready";
 
 export function emitActiveRoleDisplay(eventBus: { emit(event: string, payload: RoleDisplayPayload | null): void }, role: ResolvedRole): void {
 	eventBus.emit(PI_AGENT_ROLES_ACTIVE_ROLE_EVENT, {
@@ -19,8 +20,8 @@ export function resolveRoleManagerLayout(width: number): "wide" | "compact" {
 }
 
 export function shouldShowFallbackWidget(options: {
-	fancyEditorListenerCount: number;
+	fancyEditorReady: boolean;
 	showWidgetWhenFancyEditorMissing: boolean;
 }): boolean {
-	return options.showWidgetWhenFancyEditorMissing && options.fancyEditorListenerCount === 0;
+	return options.showWidgetWhenFancyEditorMissing && !options.fancyEditorReady;
 }

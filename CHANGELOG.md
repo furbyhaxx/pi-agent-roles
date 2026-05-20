@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-20
+
+### Fixed
+
+- Stopped showing the fallback `[Role: ...]` widget when `pi-fancy-editor` is active by replacing the broken event-listener-count heuristic with an explicit fancy-editor readiness signal.
+
+### Changed
+
+- Event-bus subscriptions now use the public pi event-bus unsubscribe contract instead of assuming Node `EventEmitter` methods are available.
+
 ## [0.1.1] - 2026-05-20
 
 ### Changed
