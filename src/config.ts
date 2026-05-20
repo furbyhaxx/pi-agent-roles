@@ -10,6 +10,7 @@ interface RawRolesConfig {
 	cycleShortcut?: unknown;
 	userSwitchMode?: unknown;
 	showWidgetWhenFancyEditorMissing?: unknown;
+	temperatureBlacklist?: unknown;
 }
 
 export const DEFAULT_ROLES_CONFIG: RolesConfig = {
@@ -18,6 +19,7 @@ export const DEFAULT_ROLES_CONFIG: RolesConfig = {
 	cycleShortcut: "ctrl+r",
 	userSwitchMode: "end_turn",
 	showWidgetWhenFancyEditorMissing: true,
+	temperatureBlacklist: ["openai-codex/*"],
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -49,6 +51,14 @@ function normalizeUserSwitchMode(value: unknown): UserSwitchMode | undefined {
 
 function normalizeWidgetFallback(value: unknown): boolean | undefined {
 	return typeof value === "boolean" ? value : undefined;
+}
+
+function normalizeTemperatureBlacklist(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const patterns = value
+		.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+		.map((entry) => entry.trim());
+	return [...new Set(patterns)];
 }
 
 function expandEnvironment(input: string): string {
@@ -112,6 +122,11 @@ export function loadRolesConfig(cwd: string, options?: { agentDir?: string }): L
 			: globalRoles.showWidgetWhenFancyEditorMissing !== undefined
 				? normalizeWidgetFallback(globalRoles.showWidgetWhenFancyEditorMissing) ?? DEFAULT_ROLES_CONFIG.showWidgetWhenFancyEditorMissing
 				: DEFAULT_ROLES_CONFIG.showWidgetWhenFancyEditorMissing,
+		temperatureBlacklist: projectRoles.temperatureBlacklist !== undefined
+			? normalizeTemperatureBlacklist(projectRoles.temperatureBlacklist) ?? DEFAULT_ROLES_CONFIG.temperatureBlacklist
+			: globalRoles.temperatureBlacklist !== undefined
+				? normalizeTemperatureBlacklist(globalRoles.temperatureBlacklist) ?? DEFAULT_ROLES_CONFIG.temperatureBlacklist
+				: DEFAULT_ROLES_CONFIG.temperatureBlacklist,
 	};
 
 	return {

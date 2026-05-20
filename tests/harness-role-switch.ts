@@ -93,6 +93,7 @@ function writeRoleFixture(cwd: string): void {
 					default: "builder",
 					userSwitchMode: "end_turn",
 					showWidgetWhenFancyEditorMissing: true,
+					temperatureBlacklist: ["*/*"],
 				},
 			},
 			null,
@@ -243,7 +244,7 @@ async function main(): Promise<void> {
 		assert.match(payloadText, /<role-state>/);
 		assert.match(payloadText, /<required>requesting-code-review<\/required>/);
 		assert.match(payloadText, /Use `role_switch` only when another listed role is a better fit\./);
-		assert.equal((captured[1]!.payloads.at(-1) as any)?.temperature, 0.2);
+		assert.equal((captured[1]!.payloads.at(-1) as any)?.temperature, undefined);
 
 		console.log("harness role-switch tests passed");
 	} finally {

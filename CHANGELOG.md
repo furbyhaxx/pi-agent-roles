@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-20
+
+### Added
+
+- Added `roles.temperatureBlacklist` with a sane default of `["openai-codex/*"]` so provider/model globs that reject `temperature` do not receive it.
+
+### Fixed
+
+- Prevented role-level `temperature` from being forwarded to blacklisted providers such as `openai-codex/*`, avoiding `Unsupported parameter: temperature` errors.
+
 ## [0.1.3] - 2026-05-20
 
 ### Fixed

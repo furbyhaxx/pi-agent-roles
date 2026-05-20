@@ -46,6 +46,7 @@ pi -e path/to/pi-agent-roles/src/index.ts
 - Exposes `/role:manage` and `/role:unstick`.
 - Registers a cycle shortcut, default `ctrl+r`.
 - Exposes an LLM-callable `role_switch` tool only when switching is currently allowed.
+- Skips `temperature` injection for configured provider/model globs such as `openai-codex/*`.
 - Integrates with `pi-fancy-editor` through the shared event bus and falls back to a compact widget below the editor when fancy-editor is not present.
 - Bundles the `role-creator` skill and exposes it dynamically through `resources_discover`.
 
@@ -138,7 +139,8 @@ Default config:
     "roots": [],
     "cycleShortcut": "ctrl+r",
     "userSwitchMode": "end_turn",
-    "showWidgetWhenFancyEditorMissing": true
+    "showWidgetWhenFancyEditorMissing": true,
+    "temperatureBlacklist": ["openai-codex/*"]
   }
 }
 ```
@@ -155,7 +157,11 @@ Example with overrides:
     ],
     "cycleShortcut": "ctrl+r",
     "userSwitchMode": "instant",
-    "showWidgetWhenFancyEditorMissing": true
+    "showWidgetWhenFancyEditorMissing": true,
+    "temperatureBlacklist": [
+      "openai-codex/*",
+      "google/*"
+    ]
   }
 }
 ```
@@ -167,6 +173,8 @@ Example with overrides:
 - `userSwitchMode`:
   - `end_turn` — queue user switches until the agent becomes idle
   - `instant` — apply immediately
+- `temperatureBlacklist` blocks provider/model globs from receiving role-level `temperature`
+- default blacklist: `openai-codex/*`
 - if no valid role files are found, the built-in fallback `builder` role is used
 
 ## Role file format

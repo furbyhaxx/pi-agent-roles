@@ -4,6 +4,7 @@ import {
 	executeRoleSwitch,
 	filterVisibleTools,
 	getAgentSwitchableRoles,
+	isTemperatureBlacklisted,
 	matchSkillPolicy,
 	matchToolPolicy,
 } from "../src/policy.js";
@@ -70,6 +71,9 @@ assert.equal(matchToolPolicy(builder, "web_search"), "deny");
 assert.equal(matchSkillPolicy(builder, "systematic-debugging"), "required");
 assert.equal(matchSkillPolicy(builder, "requesting-code-review"), "optional");
 assert.equal(matchSkillPolicy(builder, "other-skill"), "hidden");
+assert.equal(isTemperatureBlacklisted({ provider: "openai-codex", modelId: "gpt-5.4" }, ["openai-codex/*"]), true);
+assert.equal(isTemperatureBlacklisted({ provider: "anthropic", modelId: "claude-sonnet-4-5" }, ["openai-codex/*"]), false);
+assert.equal(isTemperatureBlacklisted({ provider: "anthropic", modelId: "claude-sonnet-4-5" }, ["anthropic/claude-*", "openai-codex/*"]), true);
 
 const visible = filterVisibleTools(["read", "bash", "web_search", "role_switch"], builder, true);
 assert.deepEqual(visible.visibleTools, ["read", "bash", "role_switch"]);

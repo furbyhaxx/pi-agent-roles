@@ -16,6 +16,7 @@ import {
 	executeRoleSwitch,
 	filterVisibleTools,
 	getAgentSwitchableRoles,
+	isTemperatureBlacklisted,
 	matchSkillPolicy,
 	matchToolPolicy,
 } from "./policy.js";
@@ -487,11 +488,14 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		});
 	});
 
-	pi.on("before_provider_request", (event) => {
+	pi.on("before_provider_request", (event, ctx) => {
 		const role = currentRole();
 		if (!role || !event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return;
 		let payload = injectRoleStateIntoPayload(event.payload, liveRoleStateContext) as Record<string, unknown>;
 		if (role.temperature === undefined) return payload;
+		if (isTemperatureBlacklisted({ provider: ctx.model?.provider, modelId: ctx.model?.id }, loadedConfig?.config.temperatureBlacklist ?? [])) {
+			return payload;
+		}
 		payload = { ...payload, temperature: role.temperature };
 		const generationConfig = payload.generationConfig;
 		if (generationConfig && typeof generationConfig === "object" && !Array.isArray(generationConfig)) {

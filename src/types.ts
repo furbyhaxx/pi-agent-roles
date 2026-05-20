@@ -32,6 +32,7 @@ export interface RolesConfig {
 	cycleShortcut: string;
 	userSwitchMode: UserSwitchMode;
 	showWidgetWhenFancyEditorMissing: boolean;
+	temperatureBlacklist: string[];
 }
 
 export interface LoadedRolesConfig {

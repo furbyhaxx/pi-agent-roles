@@ -18,6 +18,7 @@ async function main(): Promise<void> {
 			cycleShortcut: "ctrl+r",
 			userSwitchMode: "end_turn",
 			showWidgetWhenFancyEditorMissing: true,
+			temperatureBlacklist: ["openai-codex/*"],
 		});
 
 		await writeFile(
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
 						cycleShortcut: "ctrl+shift+r",
 						userSwitchMode: "instant",
 						showWidgetWhenFancyEditorMissing: false,
+						temperatureBlacklist: ["openai-codex/*", "google/*"],
 					},
 				},
 				null,
@@ -45,6 +47,7 @@ async function main(): Promise<void> {
 						default: "builder",
 						roots: ["./local-roles"],
 						cycleShortcut: "ctrl+x",
+						temperatureBlacklist: ["anthropic/*"],
 					},
 				},
 				null,
@@ -62,6 +65,7 @@ async function main(): Promise<void> {
 			assert.equal(loaded.config.cycleShortcut, "ctrl+x");
 			assert.equal(loaded.config.userSwitchMode, "instant");
 			assert.equal(loaded.config.showWidgetWhenFancyEditorMissing, false);
+			assert.deepEqual(loaded.config.temperatureBlacklist, ["anthropic/*"]);
 			assert.deepEqual(loaded.defaultRoots, [join(agentDir, "roles"), join(cwd, ".pi", "roles")]);
 			assert.deepEqual(loaded.globalRoots, [join(agentDir, "roles"), join(homedir(), "global-roles"), join(agentDir, "shared-roles")]);
 			assert.deepEqual(loaded.projectRoots, [join(cwd, ".pi", "roles"), join(cwd, "local-roles")]);
@@ -77,6 +81,7 @@ async function main(): Promise<void> {
 							cycleShortcut: "",
 							userSwitchMode: "later",
 							showWidgetWhenFancyEditorMissing: "nope",
+							temperatureBlacklist: "oops",
 						},
 					},
 					null,
@@ -91,6 +96,7 @@ async function main(): Promise<void> {
 			assert.equal(coerced.config.cycleShortcut, "ctrl+r");
 			assert.equal(coerced.config.userSwitchMode, "end_turn");
 			assert.equal(coerced.config.showWidgetWhenFancyEditorMissing, true);
+			assert.deepEqual(coerced.config.temperatureBlacklist, ["openai-codex/*"]);
 		} finally {
 			if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
 			else process.env.PI_CODING_AGENT_DIR = previousAgentDir;

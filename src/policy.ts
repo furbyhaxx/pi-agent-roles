@@ -5,6 +5,15 @@ function patternToRegExp(pattern: string): RegExp {
 	return new RegExp(`^${escaped}$`);
 }
 
+export function isTemperatureBlacklisted(
+	model: { provider?: string; modelId?: string } | undefined,
+	patterns: readonly string[],
+): boolean {
+	if (!model?.provider || !model.modelId) return false;
+	const target = `${model.provider}/${model.modelId}`;
+	return patterns.some((pattern) => patternToRegExp(pattern).test(target));
+}
+
 function lastMatchingAction<T extends { pattern: string; action: ToolPolicyAction | SkillPolicyAction }>(rules: readonly T[], name: string) {
 	let action = rules[0]?.action;
 	for (const rule of rules) {
