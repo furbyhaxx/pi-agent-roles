@@ -41,7 +41,7 @@ pi -e path/to/pi-agent-roles/src/index.ts
 - Injects stable role metadata in `before_agent_start` and live role state in `context`.
 - Exposes `/role:manage` and `/role:unstick`.
 - Registers a cycle shortcut, default `ctrl+r`.
-- Exposes an LLM-callable `role:switch` tool only when switching is currently allowed.
+- Exposes an LLM-callable `role_switch` tool only when switching is currently allowed.
 - Integrates with `pi-fancy-editor` through the shared event bus and falls back to a compact widget below the editor when fancy-editor is not present.
 - Bundles the `role-creator` skill and exposes it dynamically through `resources_discover`.
 
@@ -210,7 +210,7 @@ Role-specific instructions go here.
 
 ## Agent tool surface
 
-`role:switch` is the only LLM-callable tool in the package.
+`role_switch` is the only LLM-callable tool in the package.
 
 It is exposed only when all of these are true:
 
@@ -246,7 +246,7 @@ Then exercise:
 - `/role:manage`
 - `/role:unstick`
 - cycle roles with `ctrl+r`
-- prompt the agent in a role where `role:switch` is visible
+- prompt the agent in a role where `role_switch` is visible
 
 ## License
 

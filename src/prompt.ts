@@ -53,7 +53,7 @@ export function buildRoleStateContext(options: {
 		`  <current-role id="${escapeXml(options.currentRole.name)}" label="${escapeXml(options.currentRole.label)}" source="${options.activationSource}" sticky="${options.stickyLocked ? "true" : "false"}" />`,
 	);
 	lines.push(
-		`  <switching allowed="${options.switchingAllowed ? "true" : "false"}">${options.switchingAllowed ? "Use `role:switch` only when another listed role is a better fit." : "Role switching is currently unavailable."}</switching>`,
+		`  <switching allowed="${options.switchingAllowed ? "true" : "false"}">${options.switchingAllowed ? "Use `role_switch` only when another listed role is a better fit." : "Role switching is currently unavailable."}</switching>`,
 	);
 	lines.push(`  <instructions mode="${options.currentRole.promptMode}">${escapeXml(options.currentRole.body)}</instructions>`);
 	if (options.requiredSkills.length > 0 || options.optionalSkills.length > 0) {

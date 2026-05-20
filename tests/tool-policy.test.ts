@@ -71,9 +71,9 @@ assert.equal(matchSkillPolicy(builder, "systematic-debugging"), "required");
 assert.equal(matchSkillPolicy(builder, "requesting-code-review"), "optional");
 assert.equal(matchSkillPolicy(builder, "other-skill"), "hidden");
 
-const visible = filterVisibleTools(["read", "bash", "web_search", "role:switch"], builder, true);
-assert.deepEqual(visible.visibleTools, ["read", "bash", "role:switch"]);
-assert.deepEqual(visible.askTools, ["read", "role:switch"]);
+const visible = filterVisibleTools(["read", "bash", "web_search", "role_switch"], builder, true);
+assert.deepEqual(visible.visibleTools, ["read", "bash", "role_switch"]);
+assert.deepEqual(visible.askTools, ["read", "role_switch"]);
 
 assert.deepEqual(getAgentSwitchableRoles([builder, reviewer, userOnly], builder).map((role) => role.name), ["reviewer"]);
 

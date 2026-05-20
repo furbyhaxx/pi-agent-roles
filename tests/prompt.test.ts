@@ -71,7 +71,7 @@ const context = buildRoleStateContext({
 });
 assert.match(context, /<role-state>/);
 assert.match(context, /<current-role id="reviewer" label="Reviewer" source="agent" sticky="false" \/>/);
-assert.match(context, /Use `role:switch` only when another listed role is a better fit\./);
+assert.match(context, /Use `role_switch` only when another listed role is a better fit\./);
 assert.match(context, /Reviewer instructions\./);
 assert.match(context, /<required>requesting-code-review<\/required>/);
 assert.match(context, /Role reminder\./);

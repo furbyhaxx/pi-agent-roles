@@ -16,7 +16,7 @@ function stickyReminder(roleName: string): string {
 }
 
 function unstickReminder(roleName: string): string {
-	return `<system-reminder>The user removed the sticky lock from the current role \`${roleName}\`. You may switch roles again with \`role:switch\` if another available role is a better fit.</system-reminder>`;
+	return `<system-reminder>The user removed the sticky lock from the current role \`${roleName}\`. You may switch roles again with \`role_switch\` if another available role is a better fit.</system-reminder>`;
 }
 
 export function createRoleState(activeRole: string, activationSource: RoleRuntimeState["activationSource"], stickyLocked: boolean): RoleRuntimeState {

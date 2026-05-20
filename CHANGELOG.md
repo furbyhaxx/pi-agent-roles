@@ -15,7 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Added a built-in fallback `builder` role plus stable cached display colors for roles without explicit colors.
 - Added branch-aware role state persistence, sticky-lock handling, queued user role switches, and live role restoration on `session_start` and `session_tree`.
 - Added prompt filtering for hidden skills, live `<role-state>` context injection, and stable per-prompt Roles system prompt sections.
-- Added runtime tool policy enforcement (`allow`, `ask`, `deny`) and the dynamic `role:switch` tool.
+- Added runtime tool policy enforcement (`allow`, `ask`, `deny`) and the dynamic `role_switch` tool.
 - Added `/role:manage`, `/role:unstick`, and configurable role cycling via shortcut.
 - Added responsive role manager UI with a wide two-pane layout and a compact narrow-terminal layout.
 - Added `pi-fancy-editor` event-bus integration plus below-editor widget fallback when fancy-editor is unavailable.
