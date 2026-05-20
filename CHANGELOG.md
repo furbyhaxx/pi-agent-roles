@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-20
+
+### Fixed
+
+- Strip `temperature` from already-built provider payloads for blacklisted provider/model globs instead of only skipping new injection, making `roles.temperatureBlacklist` reliable for providers like `openai-codex/*`.
+
+### Added
+
+- Added regression coverage for role temperature payload handling, including payloads that already contain top-level or nested `temperature` fields before the extension hook runs.
+
 ## [0.2.0] - 2026-05-20
 
 ### Added

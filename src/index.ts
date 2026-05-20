@@ -12,11 +12,11 @@ import {
 } from "./display.js";
 import { loadRolesConfig } from "./config.js";
 import {
+	applyRoleTemperatureToPayload,
 	buildRoleSwitchDescription,
 	executeRoleSwitch,
 	filterVisibleTools,
 	getAgentSwitchableRoles,
-	isTemperatureBlacklisted,
 	matchSkillPolicy,
 	matchToolPolicy,
 } from "./policy.js";
@@ -517,17 +517,16 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	pi.on("before_provider_request", (event, ctx) => {
 		const role = currentRole();
 		if (!role || !event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return;
-		let payload = injectRoleStateIntoPayload(event.payload, liveRoleStateContext) as Record<string, unknown>;
-		if (role.temperature === undefined) return payload;
-		if (isTemperatureBlacklisted({ provider: ctx.model?.provider, modelId: ctx.model?.id }, loadedConfig?.config.temperatureBlacklist ?? [])) {
-			return payload;
-		}
-		payload = { ...payload, temperature: role.temperature };
-		const generationConfig = payload.generationConfig;
-		if (generationConfig && typeof generationConfig === "object" && !Array.isArray(generationConfig)) {
-			payload.generationConfig = { ...(generationConfig as Record<string, unknown>), temperature: role.temperature };
-		}
-		return payload;
+		const payloadWithRoleState = injectRoleStateIntoPayload(event.payload, liveRoleStateContext);
+		return applyRoleTemperatureToPayload(
+			{
+				provider: ctx.model?.provider,
+				modelId: ctx.model?.id,
+				blacklist: loadedConfig?.config.temperatureBlacklist ?? [],
+				roleTemperature: role.temperature,
+			},
+			payloadWithRoleState,
+		);
 	});
 
 	pi.on("tool_call", async (event, ctx) => {

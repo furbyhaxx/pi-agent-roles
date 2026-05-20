@@ -14,6 +14,40 @@ export function isTemperatureBlacklisted(
 	return patterns.some((pattern) => patternToRegExp(pattern).test(target));
 }
 
+export function applyRoleTemperatureToPayload(
+	options: {
+		provider?: string;
+		modelId?: string;
+		blacklist: readonly string[];
+		roleTemperature?: number;
+	},
+	payload: unknown,
+): unknown {
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+	const next = { ...(payload as Record<string, unknown>) };
+	const generationConfig = next.generationConfig;
+	const generationConfigRecord = generationConfig && typeof generationConfig === "object" && !Array.isArray(generationConfig)
+		? { ...(generationConfig as Record<string, unknown>) }
+		: undefined;
+
+	if (isTemperatureBlacklisted({ provider: options.provider, modelId: options.modelId }, options.blacklist)) {
+		delete next.temperature;
+		if (generationConfigRecord) {
+			delete generationConfigRecord.temperature;
+			next.generationConfig = generationConfigRecord;
+		}
+		return next;
+	}
+
+	if (options.roleTemperature === undefined) return next;
+	next.temperature = options.roleTemperature;
+	if (generationConfigRecord) {
+		generationConfigRecord.temperature = options.roleTemperature;
+		next.generationConfig = generationConfigRecord;
+	}
+	return next;
+}
+
 function lastMatchingAction<T extends { pattern: string; action: ToolPolicyAction | SkillPolicyAction }>(rules: readonly T[], name: string) {
 	let action = rules[0]?.action;
 	for (const rule of rules) {

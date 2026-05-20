@@ -1,11 +1,11 @@
 {
   "name": "@furbyhaxx/pi-agent-roles",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pi extension package for session-scoped runtime roles with model, thinking, tool, prompt, and skill policy switching.",
   "scripts": {
     "test": "npm run typecheck && npm run test:unit && npm run test:harness",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx tests/config.test.ts && tsx tests/discovery.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/tool-policy.test.ts && tsx tests/role-display.test.ts && tsx tests/example-roles.test.ts",
+    "test:unit": "tsx tests/config.test.ts && tsx tests/discovery.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/tool-policy.test.ts && tsx tests/provider-payload.test.ts && tsx tests/role-display.test.ts && tsx tests/example-roles.test.ts",
     "build": "npm run typecheck",
     "test:harness": "tsx tests/harness-role-switch.ts && tsx tests/harness-role-reload.ts && tsx tests/harness-package-install.ts"
   },
