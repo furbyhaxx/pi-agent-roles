@@ -1,6 +1,5 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { Skill } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
@@ -66,14 +65,70 @@ function subscribeEventBus(
 	};
 }
 
-function hiddenMessage(customType: string, content: string): AgentMessage {
-	return {
-		role: "custom",
-		customType,
-		content,
-		display: false,
-		timestamp: Date.now(),
-	};
+function appendText(base: string | undefined, addition: string): string {
+	return base && base.trim() !== "" ? `${base}\n\n${addition}` : addition;
+}
+
+function appendTextToContent(content: unknown, addition: string): unknown {
+	if (typeof content === "string") return appendText(content, addition);
+	if (Array.isArray(content)) {
+		let injected = false;
+		const next = content.map((item) => {
+			if (!injected && item && typeof item === "object" && "type" in item && (item as { type?: unknown }).type === "text") {
+				injected = true;
+				const current = item as { text?: unknown } & Record<string, unknown>;
+				return {
+					...current,
+					text: appendText(typeof current.text === "string" ? current.text : "", addition),
+				};
+			}
+			return item;
+		});
+		if (injected) return next;
+		return [...next, { type: "text", text: addition }];
+	}
+	if (content && typeof content === "object" && "text" in (content as Record<string, unknown>)) {
+		const current = content as { text?: unknown } & Record<string, unknown>;
+		return {
+			...current,
+			text: appendText(typeof current.text === "string" ? current.text : "", addition),
+		};
+	}
+	return content;
+}
+
+function injectRoleStateIntoPayload(payload: unknown, roleState: string): unknown {
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+	const next = { ...(payload as Record<string, unknown>) };
+	if (typeof next.instructions === "string") {
+		next.instructions = appendText(next.instructions, roleState);
+		return next;
+	}
+	if (typeof next.system === "string") {
+		next.system = appendText(next.system, roleState);
+		return next;
+	}
+	if (Array.isArray(next.system)) {
+		next.system = appendTextToContent(next.system, roleState);
+		return next;
+	}
+	if (Array.isArray(next.messages)) {
+		const messages = [...next.messages] as Array<Record<string, unknown>>;
+		const firstSystemIndex = messages.findIndex((message) => message?.role === "system");
+		if (firstSystemIndex >= 0) {
+			const message = messages[firstSystemIndex]!;
+			messages[firstSystemIndex] = {
+				...message,
+				content: appendTextToContent(message.content, roleState),
+			};
+		} else {
+			messages.unshift({ role: "system", content: roleState });
+		}
+		next.messages = messages;
+		return next;
+	}
+	next.instructions = roleState;
+	return next;
 }
 
 function currentInstructions(role: ResolvedRole): string {
@@ -118,6 +173,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	let shortcutRegistered = false;
 	let fancyEditorReady = false;
 	let activeUiContext: ExtensionContext | undefined;
+	let liveRoleStateContext = "";
 	const shownDiagnostics = new Set<string>();
 	const unsubscribeFancyEditorReady = subscribeEventBus(pi.events, PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => {
 		fancyEditorReady = payload === true;
@@ -414,37 +470,29 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		};
 	});
 
-	pi.on("context", (event) => {
+	pi.on("context", () => {
 		const role = currentRole();
 		if (!role || !state) return;
 		const skills = skillLists(role, lastKnownSkills);
 		const reminder = state.queuedReminder;
 		if (reminder) state = { ...state, queuedReminder: undefined };
-		return {
-			messages: [
-				...event.messages,
-				hiddenMessage(
-					"pi-agent-roles-state",
-					buildRoleStateContext({
-						currentRole: { ...role, body: currentInstructions(role) },
-						activationSource: state.activationSource,
-						stickyLocked: state.stickyLocked,
-						switchingAllowed: roleSwitchAdvertised(role, state, discovered.roles),
-						requiredSkills: skills.required,
-						optionalSkills: skills.optional,
-						reminder,
-					}),
-				),
-			],
-		};
+		liveRoleStateContext = buildRoleStateContext({
+			currentRole: { ...role, body: currentInstructions(role) },
+			activationSource: state.activationSource,
+			stickyLocked: state.stickyLocked,
+			switchingAllowed: roleSwitchAdvertised(role, state, discovered.roles),
+			requiredSkills: skills.required,
+			optionalSkills: skills.optional,
+			reminder,
+		});
 	});
 
 	pi.on("before_provider_request", (event) => {
 		const role = currentRole();
-		if (!role || role.temperature === undefined) return;
-		if (!event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return;
-		const payload = { ...(event.payload as Record<string, unknown>) };
-		payload.temperature = role.temperature;
+		if (!role || !event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return;
+		let payload = injectRoleStateIntoPayload(event.payload, liveRoleStateContext) as Record<string, unknown>;
+		if (role.temperature === undefined) return payload;
+		payload = { ...payload, temperature: role.temperature };
 		const generationConfig = payload.generationConfig;
 		if (generationConfig && typeof generationConfig === "object" && !Array.isArray(generationConfig)) {
 			payload.generationConfig = { ...(generationConfig as Record<string, unknown>), temperature: role.temperature };
@@ -493,6 +541,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	pi.on("session_shutdown", (_event, ctx) => {
 		activeUiContext = undefined;
 		fancyEditorReady = false;
+		liveRoleStateContext = "";
 		unsubscribeFancyEditorReady();
 		clearActiveRoleDisplay(pi.events as never);
 		if (ctx.hasUI) ctx.ui.setWidget("pi-agent-roles", undefined);

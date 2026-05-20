@@ -9,7 +9,7 @@ interface CapturedTurn {
 	systemPrompt: string;
 	selectedTools: string[];
 	payloads: unknown[];
-	roleContexts: string[];
+	roleContextMessages: string[];
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -187,13 +187,13 @@ async function main(): Promise<void> {
 						systemPrompt: event.systemPrompt,
 						selectedTools: [...(event.systemPromptOptions.selectedTools ?? [])],
 						payloads: [],
-						roleContexts: [],
+						roleContextMessages: [],
 					});
 				});
 				pi.on("context", (event: any) => {
 					const current = captured.at(-1);
 					if (!current) return;
-					current.roleContexts = event.messages
+					current.roleContextMessages = event.messages
 						.filter((message: any) => message.customType === "pi-agent-roles-state")
 						.map((message: any) => String(message.content));
 				});
@@ -238,8 +238,11 @@ async function main(): Promise<void> {
 		assert(!captured[1]!.selectedTools.includes("role_switch"));
 		assert.doesNotMatch(captured[1]!.systemPrompt, /systematic-debugging/);
 		assert.match(captured[1]!.systemPrompt, /requesting-code-review/);
-		assert.match(captured[1]!.roleContexts.join("\n"), /<required>requesting-code-review<\/required>/);
-		assert.match(captured[1]!.roleContexts.join("\n"), /Use `role_switch` only when another listed role is a better fit\./);
+		assert.equal(captured[1]!.roleContextMessages.length, 0, "role state should no longer be injected as a separate context message");
+		const payloadText = JSON.stringify(captured[1]!.payloads.at(-1));
+		assert.match(payloadText, /<role-state>/);
+		assert.match(payloadText, /<required>requesting-code-review<\/required>/);
+		assert.match(payloadText, /Use `role_switch` only when another listed role is a better fit\./);
 		assert.equal((captured[1]!.payloads.at(-1) as any)?.temperature, 0.2);
 
 		console.log("harness role-switch tests passed");

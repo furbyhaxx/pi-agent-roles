@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-20
+
+### Fixed
+
+- Stopped injecting `<role-state>` as a synthetic context message and now append it directly to the outgoing provider payload, preventing hidden role-state blocks from leaking back into the conversation stream.
+
 ## [0.1.2] - 2026-05-20
 
 ### Fixed
