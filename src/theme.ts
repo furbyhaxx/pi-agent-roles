@@ -21,7 +21,10 @@ export function paintColor(theme: Theme, color: string, text: string): string {
 	if (text.length === 0) return "";
 	if (isHexColor(color)) {
 		const { r, g, b } = hexToRgb(color);
-		const ansi = theme.getColorMode() === "256color"
+		const colorMode = typeof (theme as unknown as { getColorMode?: () => "truecolor" | "256color" }).getColorMode === "function"
+			? (theme as unknown as { getColorMode: () => "truecolor" | "256color" }).getColorMode()
+			: "truecolor";
+		const ansi = colorMode === "256color"
 			? `\x1b[38;5;${rgbTo256({ r, g, b })}m`
 			: `\x1b[38;2;${r};${g};${b}m`;
 		return `${ansi}${text}\x1b[39m`;

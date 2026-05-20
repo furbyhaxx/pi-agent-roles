@@ -5,6 +5,10 @@ A role can change the active model, thinking level, temperature, tool policy,
 role instructions, and visible skills without restarting pi. Because apparently
 changing the entire agent personality mid-session is the sane way to work now.
 
+Compatibility note: the LLM-callable role-switch tool is named `role_switch`.
+Pi tool names only accept `[a-zA-Z0-9_-]`, so the original colon version had to
+die. Tragic, really.
+
 ## Install
 
 From npm:
@@ -233,6 +237,23 @@ Install deps and run checks:
 ```sh
 npm install
 npm test
+```
+
+Harness coverage is included in `npm test`:
+
+- `tests/harness-role-switch.ts` — exercises real session role switching,
+  prompt shaping, tool visibility, and provider payload temperature override
+- `tests/harness-package-install.ts` — packs the package, installs it into a
+  sandbox project, and smoke-tests the installed extension
+
+If your local pi-test-harness checkout is not at
+`/Projects/furbyhaxx/pi-coding-agent/pi-test-harness`, set one of these before
+running the harness scripts:
+
+```sh
+export PI_TEST_HARNESS_PATH=/path/to/pi-test-harness
+# or
+export PI_TEST_HARNESS_DIR=/path/to/pi-test-harness
 ```
 
 Live smoke test:

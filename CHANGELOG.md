@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-20
+
+### Changed
+
+- Renamed the LLM-callable role switch tool from `role:switch` to `role_switch` because pi tool names only accept letters, numbers, underscores, and hyphens.
+- Hardened hex color rendering so fallback role colors also work under the pi test harness mock theme.
+
+### Added
+
+- Added harness coverage for end-to-end role switching, prompt/tool filtering, and provider payload temperature forwarding.
+- Added sandbox install verification that packs the package, installs it into a temporary project, and smoke-tests the installed extension.
+
 ## [0.1.0] - 2026-05-20
 
 ### Added
