@@ -1,0 +1,79 @@
+{
+  "name": "@furbyhaxx/pi-agent-roles",
+  "version": "0.1.0",
+  "description": "Pi extension package for session-scoped runtime roles with model, thinking, tool, prompt, and skill policy switching.",
+  "scripts": {
+    "test": "npm run typecheck && npm run test:unit",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "tsx tests/config.test.ts && tsx tests/discovery.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/tool-policy.test.ts && tsx tests/role-display.test.ts",
+    "build": "npm run typecheck"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furbyhaxx/pi-agent-roles.git"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-coding-agent",
+    "roles",
+    "agent-roles"
+  ],
+  "author": "furbyhaxx",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/furbyhaxx/pi-agent-roles/issues"
+  },
+  "homepage": "https://github.com/furbyhaxx/pi-agent-roles#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-agent-core": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-tui": {
+      "optional": true
+    },
+    "typebox": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src/**/*.ts",
+    "skills/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.3",
+    "typebox": "^1.1.38",
+    "typescript": "^6.0.3"
+  }
+}
