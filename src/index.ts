@@ -27,6 +27,7 @@ import { paintColor } from "./theme.js";
 import {
 	PI_AGENT_ROLES_ACTIVE_ROLE_EVENT,
 	ROLE_MANAGER_COMMAND,
+	ROLE_RELOAD_COMMAND,
 	ROLE_SWITCH_TOOL_NAME,
 	ROLE_UNSTICK_COMMAND,
 	type DiscoverRolesResult,
@@ -329,16 +330,26 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		});
 	}
 
-	async function reconcileAfterEdit(ctx: ExtensionContext): Promise<void> {
+	async function reloadRoleRuntime(ctx: ExtensionContext): Promise<{ previousRole?: string; activeRole: string; roleCount: number; roleChanged: boolean }> {
 		refreshCatalog(ctx.cwd);
 		surfaceDiagnostics(ctx);
+		const previousRole = state?.activeRole;
 		const nextState = state ?? branchState(ctx, "restore");
-		state = nextState;
-		await applyRoleState(
-			ctx,
-			discovered.roles.some((role) => role.name === nextState.activeRole) ? nextState : branchState(ctx, "restore"),
-			{ persist: false },
-		);
+		const resolvedState = discovered.roles.some((role) => role.name === nextState.activeRole)
+			? nextState
+			: branchState(ctx, "restore");
+		state = resolvedState;
+		await applyRoleState(ctx, resolvedState, { persist: previousRole !== undefined && previousRole !== resolvedState.activeRole });
+		return {
+			previousRole,
+			activeRole: resolvedState.activeRole,
+			roleCount: discovered.roles.length,
+			roleChanged: previousRole !== undefined && previousRole !== resolvedState.activeRole,
+		};
+	}
+
+	async function reconcileAfterEdit(ctx: ExtensionContext): Promise<void> {
+		await reloadRoleRuntime(ctx);
 	}
 
 	async function activateFromUserSelection(ctx: ExtensionContext, roleName: string): Promise<void> {
@@ -403,6 +414,21 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 					}
 				}
 			}
+		},
+	});
+
+	pi.registerCommand(ROLE_RELOAD_COMMAND, {
+		description: "Reload role files and reapply runtime role state",
+		handler: async (_args, ctx) => {
+			if (!ctx.isIdle()) {
+				ctx.ui.notify("Waiting for the current agent turn to finish before reloading roles.", "info");
+				await ctx.waitForIdle();
+			}
+			const result = await reloadRoleRuntime(ctx);
+			const message = result.roleChanged && result.previousRole
+				? `Reloaded ${result.roleCount} roles. Active role changed from ${result.previousRole} to ${result.activeRole}.`
+				: `Reloaded ${result.roleCount} roles. Active role: ${result.activeRole}.`;
+			ctx.ui.notify(message, "info");
 		},
 	});
 

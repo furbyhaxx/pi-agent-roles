@@ -43,7 +43,7 @@ pi -e path/to/pi-agent-roles/src/index.ts
 - Applies role-specific model, thinking, temperature, tool visibility, and tool confirmation policy.
 - Filters hidden skills from the prompt and blocks hidden `/skill:` use while the role is active.
 - Injects stable role metadata in `before_agent_start` and live role state in `context`.
-- Exposes `/role:manage` and `/role:unstick`.
+- Exposes `/role:manage`, `/role:reload`, and `/role:unstick`.
 - Registers a cycle shortcut, default `ctrl+r`.
 - Exposes an LLM-callable `role_switch` tool only when switching is currently allowed.
 - Skips `temperature` injection for configured provider/model globs such as `openai-codex/*`.
@@ -53,8 +53,32 @@ pi -e path/to/pi-agent-roles/src/index.ts
 ## Commands and shortcut
 
 - `/role:manage` — open the interactive role manager
+- `/role:reload` — rescan role files and reapply runtime role state without reloading the whole pi runtime
 - `/role:unstick` — clear the sticky lock on the current role
 - `ctrl+r` by default — cycle user-activatable roles in `index`, then `name` order
+
+## Example role pack
+
+The repo ships a live-test role pack in `examples/roles/`, including roles such as:
+
+- `brainstormer`
+- `developer`
+- `typescript-developer`
+- `reviewer`
+- `prompt-engineer`
+- `tool-designer`
+- `extension-architect`
+- `skill-architect`
+- `debugger`
+- `planner`
+- `beta-tester`
+- `researcher`
+- `ui-designer`
+- `ux-designer`
+- `release-manager`
+
+For local testing, the repo-local `.pi/roles/` directory can symlink these files so
+pi discovers them immediately in this checkout.
 
 ## Role manager UI
 

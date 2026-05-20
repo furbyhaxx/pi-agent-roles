@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Added `/role:reload` to rescan role files and reapply runtime role state without reloading the whole pi runtime.
+- Added example-role coverage for the new `brainstormer` role plus a live-test role pack under `examples/roles/`.
+
 ## [0.1.4] - 2026-05-20
 
 ### Added
