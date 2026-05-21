@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [2.0.0-dev.0] - Unreleased
+
+### Breaking
+
+- Placeholder for v2 breaking changes.
+
 ## [0.2.1] - 2026-05-20
 
 ### Fixed
