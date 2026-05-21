@@ -8,14 +8,38 @@ export type RolePromptMode = "append" | "replace";
 export type UserSwitchMode = "instant" | "end_turn";
 export type ActivationSource = "startup" | "restore" | "user" | "agent";
 
+/** @deprecated Transitional flat rule shape kept for compiled last-match-wins policy views. */
 export interface ToolPolicyRule {
 	pattern: string;
 	action: ToolPolicyAction;
 }
 
+/** @deprecated Transitional flat rule shape kept for compiled last-match-wins policy views. */
 export interface SkillPolicyRule {
 	pattern: string;
 	action: SkillPolicyAction;
+}
+
+export interface SkillsRootsConfig {
+	inherit: boolean;
+	dirs: string[];
+}
+
+export interface RoleSkillsConfig {
+	roots: SkillsRootsConfig;
+	inheritLoaded: boolean;
+	required: string[];
+	optional: string[];
+	hidden: string[];
+	rules: SkillPolicyRule[];
+}
+
+export interface RoleToolsConfig {
+	inherit: boolean;
+	allow: string[];
+	ask: string[];
+	hidden: string[];
+	rules: ToolPolicyRule[];
 }
 
 export interface ModelSelection {
@@ -63,8 +87,8 @@ export interface ResolvedRole {
 	model: ModelSelection;
 	thinking?: ThinkingLevel;
 	temperature?: number;
-	tools: ToolPolicyRule[];
-	skills: SkillPolicyRule[];
+	tools: RoleToolsConfig;
+	skills: RoleSkillsConfig;
 	hasExplicitSkills: boolean;
 	promptMode: RolePromptMode;
 	body: string;
