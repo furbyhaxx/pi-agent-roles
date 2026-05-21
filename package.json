@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx tests/config.test.ts && tsx tests/discovery.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/tool-policy.test.ts && tsx tests/provider-payload.test.ts && tsx tests/role-display.test.ts && tsx tests/example-roles.test.ts",
     "build": "npm run typecheck",
-    "test:harness": "tsx tests/harness-role-switch.ts && tsx tests/harness-role-reload.ts && tsx tests/harness-package-install.ts"
+    "test:harness": "tsx tests/harness-role-switch.ts && tsx tests/harness-role-switch-skills.ts && tsx tests/harness-role-reload.ts && tsx tests/harness-package-install.ts"
   },
   "repository": {
     "type": "git",

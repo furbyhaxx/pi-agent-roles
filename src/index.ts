@@ -28,6 +28,7 @@ import { renderTemplate } from "./template.js";
 import { createRoleFlow, editRoleFlow, showRoleDetails, showRoleManager } from "./ui.js";
 import { paintColor } from "./theme.js";
 import {
+	applyRequiredSkills,
 	readActiveSkillBodies,
 	reconstructActiveSkills,
 	type ActiveSkill,
@@ -333,6 +334,11 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			return { warnings: ["No roles are available."], applied: { visibleTools: [], askTools: [], requiredSkills: [], optionalSkills: [] } };
 		}
 		if (state.activeRole !== role.name) state = { ...state, activeRole: role.name };
+		const previousActive = activeSkillState;
+		const carried = role.skills.inheritLoaded ? previousActive : [];
+		const required = applyRequiredSkills(carried, role, lastKnownSkills);
+		activeSkillState = required;
+		persistActiveSkills();
 		const warnings: string[] = [];
 		let appliedModel: string | undefined;
 		if (!role.model.inherit && role.model.provider && role.model.modelId) {
@@ -565,6 +571,13 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		const restoredState = reconstructRoleState(branch);
 		state = branchState(ctx, restoredState ? "restore" : "startup");
 		restoreActiveSkillState(branch);
+		if (activeSkillState.length === 0) {
+			const role = currentRole();
+			if (role) {
+				activeSkillState = applyRequiredSkills([], role, lastKnownSkills);
+				persistActiveSkills();
+			}
+		}
 		await applyRoleState(ctx, state, { persist: !restoredState });
 	});
 
