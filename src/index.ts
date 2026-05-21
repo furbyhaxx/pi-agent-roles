@@ -3,6 +3,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
 import type { BuildSystemPromptOptions, ExtensionAPI, ExtensionContext, SessionEntry, Skill } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { formatDetail } from "./ask-detail.js";
+import { pickPrimaryArg } from "./ask-picker.js";
+import { createAskStore } from "./ask-store.js";
+import { loadAskConfig, loadRolesConfig, saveAskPrimaryToolArg, type AskPrimaryToolArg } from "./config.js";
 import { discoverRoles } from "./discovery.js";
 import {
 	PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT,
@@ -10,7 +14,6 @@ import {
 	emitActiveRoleDisplay,
 	shouldShowFallbackWidget,
 } from "./display.js";
-import { loadRolesConfig } from "./config.js";
 import {
 	applyRoleTemperatureToPayload,
 	buildRoleSwitchDescription,
@@ -64,6 +67,11 @@ const ROLE_SWITCH_PARAMETERS = Type.Object({
 	role: Type.String({ description: "Target role id." }),
 	reason: Type.Optional(Type.String({ description: "Optional short rationale for observability only." })),
 });
+
+function globMatch(name: string, pattern: string): boolean {
+	const escaped = pattern.replace(/[|\\{}()[\]^$+?.]/g, "\\$&").replace(/\*/g, ".*");
+	return new RegExp(`^${escaped}$`).test(name);
+}
 
 function resolveBuildSystemPrompt(): Promise<BuildSystemPromptFn> {
 	if (!buildSystemPromptPromise) {
@@ -209,6 +217,8 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	let activeUiContext: ExtensionContext | undefined;
 	let liveRoleStateContext = "";
 	let activeSkillState: ActiveSkill[] = [];
+	let askStore = createAskStore();
+	let sessionAskPrimaryToolArgs: Record<string, AskPrimaryToolArg> = {};
 	const shownDiagnostics = new Set<string>();
 	const unsubscribeFancyEditorReady = subscribeEventBus(pi.events, PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => {
 		fancyEditorReady = payload === true;
@@ -549,6 +559,8 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 
 	pi.on("session_start", async (_event, ctx) => {
 		activeUiContext = ctx;
+		askStore = createAskStore();
+		sessionAskPrimaryToolArgs = {};
 		refreshCatalog(ctx.cwd);
 		surfaceDiagnostics(ctx);
 		if (!shortcutRegistered) {
@@ -661,16 +673,52 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	pi.on("tool_call", async (event, ctx) => {
 		const role = currentRole();
 		if (!role) return;
+		if (role.tools.hidden.some((pattern) => globMatch(event.toolName, pattern))) {
+			return { block: true, reason: `Tool ${event.toolName} is hidden by the active role ${role.name}.` };
+		}
 		const action = matchToolPolicy(role, event.toolName);
 		if (action === "deny") {
 			return { block: true, reason: `Tool ${event.toolName} is denied by the active role ${role.name}.` };
 		}
-		if (action === "ask") {
-			if (!ctx.hasUI) {
-				return { block: true, reason: `Tool ${event.toolName} requires confirmation in the active role ${role.name}.` };
+		if (action !== "ask") return;
+		if (askStore.isApproved(event.toolName, event.input)) return;
+
+		if (!ctx.hasUI) {
+			return { block: true, reason: `Tool ${event.toolName} requires confirmation in the active role ${role.name}.` };
+		}
+
+		const askConfig = loadAskConfig(ctx.cwd);
+		let primaryPath = Object.prototype.hasOwnProperty.call(sessionAskPrimaryToolArgs, event.toolName)
+			? sessionAskPrimaryToolArgs[event.toolName]
+			: askConfig.primaryToolArgs[event.toolName];
+		if (primaryPath === undefined) {
+			const picked = await pickPrimaryArg(ctx, event.toolName, event.input);
+			const chosenPath = picked.path ?? false;
+			sessionAskPrimaryToolArgs[event.toolName] = chosenPath;
+			if ((picked.scope === "global" || picked.scope === "project") && typeof picked.path === "string") {
+				saveAskPrimaryToolArg(event.toolName, picked.path, {
+					scope: picked.scope,
+					agentDir: process.env.PI_CODING_AGENT_DIR,
+					cwd: ctx.cwd,
+				});
 			}
-			const ok = await ctx.ui.confirm("Role tool confirmation", `Allow ${event.toolName} while role ${role.label} is active?`);
-			if (!ok) return { block: true, reason: `Tool ${event.toolName} was rejected by the user.` };
+			primaryPath = chosenPath;
+		}
+
+		const detail = formatDetail(event.toolName, event.input, {
+			primaryToolArgs: { [event.toolName]: primaryPath ?? false },
+		});
+		const choices = [
+			detail ? `Allow once (${detail})` : "Allow once",
+			`Always allow ${event.toolName} this session`,
+			`Always allow ${event.toolName} with these args this session`,
+			"Deny",
+		] as const;
+		const selected = await ctx.ui.select(`Allow ${event.toolName}?`, [...choices]);
+		if (selected === choices[1]) askStore.approveTool(event.toolName);
+		if (selected === choices[2]) askStore.approveToolArgs(event.toolName, event.input);
+		if (selected === choices[3] || selected === undefined) {
+			return { block: true, reason: `Tool ${event.toolName} was denied by the user.` };
 		}
 	});
 
@@ -700,6 +748,8 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		activeUiContext = undefined;
 		fancyEditorReady = false;
 		liveRoleStateContext = "";
+		askStore.reset();
+		sessionAskPrimaryToolArgs = {};
 		unsubscribeFancyEditorReady();
 		clearActiveRoleDisplay(pi.events as never);
 		if (ctx.hasUI) ctx.ui.setWidget("pi-agent-roles", undefined);
