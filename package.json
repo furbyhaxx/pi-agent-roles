@@ -62,6 +62,7 @@
   "files": [
     "src/**/*.ts",
     "skills/",
+    "templates/",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
