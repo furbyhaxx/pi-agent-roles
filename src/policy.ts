@@ -57,11 +57,11 @@ function lastMatchingAction<T extends { pattern: string; action: ToolPolicyActio
 }
 
 export function matchToolPolicy(role: ResolvedRole, toolName: string): ToolPolicyAction {
-	return (lastMatchingAction(role.tools, toolName) as ToolPolicyAction | undefined) ?? "allow";
+	return (lastMatchingAction(role.tools.rules, toolName) as ToolPolicyAction | undefined) ?? "allow";
 }
 
 export function matchSkillPolicy(role: ResolvedRole, skillName: string): SkillPolicyAction {
-	return (lastMatchingAction(role.skills, skillName) as SkillPolicyAction | undefined) ?? "optional";
+	return (lastMatchingAction(role.skills.rules, skillName) as SkillPolicyAction | undefined) ?? "optional";
 }
 
 export function filterVisibleTools(
@@ -73,6 +73,7 @@ export function filterVisibleTools(
 	const askTools: string[] = [];
 	for (const name of allToolNames) {
 		if (name === ROLE_SWITCH_TOOL_NAME && !roleSwitchVisible) continue;
+		if (role.tools.hidden.some((pattern) => patternToRegExp(pattern).test(name))) continue;
 		const action = matchToolPolicy(role, name);
 		if (action === "deny") continue;
 		visibleTools.push(name);
@@ -114,8 +115,8 @@ export function buildRoleSwitchDescription(options: {
 }
 
 function summarizeRole(role: ResolvedRole) {
-	const requiredSkills = role.skills.filter((rule) => rule.action === "required").map((rule) => rule.pattern);
-	const optionalSkills = role.skills.filter((rule) => rule.action === "optional" && rule.pattern !== "*").map((rule) => rule.pattern);
+	const requiredSkills = [...role.skills.required];
+	const optionalSkills = [...role.skills.optional];
 	return {
 		model: role.model.inherit ? undefined : role.model.raw,
 		thinking: role.thinking,

@@ -8,9 +8,32 @@ import {
 	matchSkillPolicy,
 	matchToolPolicy,
 } from "../src/policy.js";
-import type { ResolvedRole, RoleRuntimeState } from "../src/types.js";
+import type { ResolvedRole, RoleRuntimeState, RoleSkillsConfig, RoleToolsConfig } from "../src/types.js";
 
-function makeRole(overrides: Partial<ResolvedRole>): ResolvedRole {
+function mkTools(overrides: Partial<RoleToolsConfig> = {}): RoleToolsConfig {
+	return {
+		inherit: true,
+		allow: [],
+		ask: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "allow" }],
+		...overrides,
+	};
+}
+
+function mkSkills(overrides: Partial<RoleSkillsConfig> = {}): RoleSkillsConfig {
+	return {
+		roots: { inherit: true, dirs: [] },
+		inheritLoaded: true,
+		required: [],
+		optional: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "optional" }],
+		...overrides,
+	};
+}
+
+function mkRole(overrides: Partial<ResolvedRole>): ResolvedRole {
 	return {
 		name: "builder",
 		label: "Builder",
@@ -24,8 +47,8 @@ function makeRole(overrides: Partial<ResolvedRole>): ResolvedRole {
 		model: { raw: "inherit", inherit: true },
 		thinking: undefined,
 		temperature: undefined,
-		tools: [{ pattern: "*", action: "allow" }],
-		skills: [{ pattern: "*", action: "optional" }],
+		tools: mkTools(),
+		skills: mkSkills(),
 		hasExplicitSkills: false,
 		promptMode: "append",
 		body: "Instructions.",
@@ -36,27 +59,41 @@ function makeRole(overrides: Partial<ResolvedRole>): ResolvedRole {
 	};
 }
 
-const builder = makeRole({
-	tools: [
-		{ pattern: "*", action: "ask" },
-		{ pattern: "bash", action: "allow" },
-		{ pattern: "web_*", action: "deny" },
-	],
-	skills: [
-		{ pattern: "*", action: "hidden" },
-		{ pattern: "systematic-debugging", action: "required" },
-		{ pattern: "requesting-*", action: "optional" },
-	],
+const builder = mkRole({
+	tools: mkTools({
+		inherit: false,
+		allow: ["bash"],
+		ask: ["read", "role_switch"],
+		hidden: ["web_*"],
+		rules: [
+			{ pattern: "*", action: "deny" },
+			{ pattern: "bash", action: "allow" },
+			{ pattern: "read", action: "ask" },
+			{ pattern: "role_switch", action: "ask" },
+			{ pattern: "web_*", action: "deny" },
+		],
+	}),
+	skills: mkSkills({
+		required: ["systematic-debugging"],
+		optional: ["requesting-*"],
+		hidden: ["other-skill"],
+		rules: [
+			{ pattern: "*", action: "optional" },
+			{ pattern: "requesting-*", action: "optional" },
+			{ pattern: "other-skill", action: "hidden" },
+			{ pattern: "systematic-debugging", action: "required" },
+		],
+	}),
 	hasExplicitSkills: true,
 });
-const reviewer = makeRole({
+const reviewer = mkRole({
 	name: "reviewer",
 	label: "Reviewer",
 	index: 1,
 	triggerDescription: "Use for review and critique tasks.",
 	body: "Reviewer instructions.",
 });
-const userOnly = makeRole({
+const userOnly = mkRole({
 	name: "user-only",
 	label: "User Only",
 	index: 2,
