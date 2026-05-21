@@ -169,7 +169,7 @@ Legacy array instructions.
 				projectRoots: [projectRoot],
 			});
 			assert.deepEqual(discovered.roles.map((role) => role.name), ["builder"]);
-			assert.ok(discovered.diagnostics.some((entry) => entry.level === "warning" && /migration/i.test(entry.message)));
+			assert.ok(discovered.diagnostics.some((entry) => entry.level === "warning" && entry.message.includes("docs/migration-v2.md")));
 		});
 	});
 

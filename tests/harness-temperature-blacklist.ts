@@ -102,9 +102,11 @@ activation: both
 sticky: false
 triggerDescription: Use for general coding and implementation work.
 model: anthropic/claude-sonnet-4-5:high
-tools: all
+tools:
+  inherit: true
 skills:
-  "*": optional
+  optional:
+    - "*"
 prompt: append
 ---
 Builder instructions.
@@ -125,12 +127,14 @@ triggerDescription: Use for review and critique tasks.
 model: openai-codex/gpt-5.5:high
 temperature: 0.2
 tools:
-  "*": deny
-  read: allow
-  grep: allow
-  find: allow
+  inherit: false
+  allow:
+    - read
+    - grep
+    - find
 skills:
-  "*": hidden
+  hidden:
+    - "*"
 prompt: replace
 ---
 Reviewer instructions.

@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+
+- Pointed legacy schema diagnostics at `docs/migration-v2.md` and bundled the migration docs/cheatsheet in the published package.
+- Expanded `npm test` so the v2 unit and harness coverage runs in the default release verification pipeline.
+
 ## [2.0.0] - 2026-05-21
 
 ### Breaking

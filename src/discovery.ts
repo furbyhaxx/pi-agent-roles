@@ -117,7 +117,7 @@ function normalizeStringArray(value: unknown): string[] {
 function pushLegacyShapeDiagnostic(diagnostics: RoleDiagnostic[], path: string, section: "skills" | "tools"): void {
 	diagnostics.push({
 		level: "warning",
-		message: `legacy ${section} shape is no longer supported — see docs/migration.md`,
+		message: `legacy ${section} shape is no longer supported — see docs/migration-v2.md`,
 		path,
 	});
 }

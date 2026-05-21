@@ -5,9 +5,9 @@
   "scripts": {
     "test": "npm run typecheck && npm run test:unit && npm run test:harness",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx tests/config.test.ts && tsx tests/discovery.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/tool-policy.test.ts && tsx tests/provider-payload.test.ts && tsx tests/role-display.test.ts && tsx tests/example-roles.test.ts",
+    "test:unit": "tsx tests/config.test.ts && tsx tests/config-ask.test.ts && tsx tests/discovery.test.ts && tsx tests/discovery-v2.test.ts && tsx tests/state.test.ts && tsx tests/prompt.test.ts && tsx tests/template.test.ts && tsx tests/template-loader.test.ts && tsx tests/tool-policy.test.ts && tsx tests/provider-payload.test.ts && tsx tests/role-display.test.ts && tsx tests/example-roles.test.ts && tsx tests/skill-runtime.test.ts && tsx tests/skill-search.test.ts && tsx tests/skill-tool.test.ts && tsx tests/ask-store.test.ts && tsx tests/ask-detail.test.ts",
     "build": "npm run typecheck",
-    "test:harness": "tsx tests/harness-role-switch.ts && tsx tests/harness-role-switch-skills.ts && tsx tests/harness-role-reload.ts && tsx tests/harness-ask-flow.ts && tsx tests/harness-package-install.ts"
+    "test:harness": "tsx tests/harness-role-switch.ts && tsx tests/harness-role-switch-skills.ts && tsx tests/harness-role-reload.ts && tsx tests/harness-temperature-blacklist.ts && tsx tests/harness-ask-flow.ts && tsx tests/harness-package-install.ts"
   },
   "repository": {
     "type": "git",
@@ -63,6 +63,8 @@
     "src/**/*.ts",
     "skills/",
     "templates/",
+    "docs/",
+    "examples/migration-cheatsheet.md",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
