@@ -9,6 +9,15 @@ Compatibility note: the LLM-callable role-switch tool is named `role_switch`.
 Pi tool names only accept `[a-zA-Z0-9_-]`, so the original colon version had to
 die. Tragic, really.
 
+## 2.0 highlights
+
+- Hard schema switch for role files: `skills` and `tools` now use nested v2 blocks.
+- Roles can rescope skills with `skills.roots`, `inherit_loaded`, `required`, `optional`, and `hidden`.
+- Tools now use `tools.inherit`, `allow`, `ask`, and `hidden`.
+- Ask prompts can render a useful detail line and remember it via `roles.ask.primaryToolArgs`.
+- Migration guide: [`docs/migration-v2.md`](docs/migration-v2.md)
+- Quick reference: [`examples/migration-cheatsheet.md`](examples/migration-cheatsheet.md)
+
 ## Install
 
 From npm:
@@ -41,11 +50,14 @@ pi -e path/to/pi-agent-roles/src/index.ts
 - Discovers role files from global and project role roots.
 - Restores the active role per session branch.
 - Applies role-specific model, thinking, temperature, tool visibility, and tool confirmation policy.
+- Rescopes visible skills per role with `skills.roots`, `inherit_loaded`, `required`, `optional`, and `hidden`.
+- Registers a `skill` tool for `search`, `activate`, `deactivate`, and `info`.
+- Injects role metadata, in-scope skill catalogs, active skill bodies, and role state through a system-prompt template.
 - Filters hidden skills from the prompt and blocks hidden `/skill:` use while the role is active.
-- Injects stable role metadata in `before_agent_start` and live role state in `context`.
 - Exposes `/role:manage`, `/role:reload`, and `/role:unstick`.
 - Registers a cycle shortcut, default `ctrl+r`.
 - Exposes an LLM-callable `role_switch` tool only when switching is currently allowed.
+- Adds ask-dialog detail rendering with configurable `roles.ask.primaryToolArgs` defaults/overrides.
 - Skips `temperature` injection for configured provider/model globs such as `openai-codex/*`.
 - Integrates with `pi-fancy-editor` through the shared event bus and falls back to a compact widget below the editor when fancy-editor is not present.
 - Bundles the `role-creator` skill and exposes it dynamically through `resources_discover`.
@@ -190,9 +202,27 @@ Example with overrides:
 }
 ```
 
+Ask detail rendering config lives in the same settings files under `roles.ask`:
+
+```json
+{
+  "roles": {
+    "ask": {
+      "primaryToolArgs": {
+        "bash": "command",
+        "write": "path",
+        "custom_tool": "request.payload.target",
+        "noisy_tool": false
+      }
+    }
+  }
+}
+```
+
 ### Settings behavior
 
 - project settings override global settings
+- `roles.ask.primaryToolArgs` values are dot-paths into the tool input; `false` disables the detail line for that tool
 - `roots` supports `~`, `$VAR`, and `${VAR}` expansion
 - `userSwitchMode`:
   - `end_turn` — queue user switches until the agent becomes idle
@@ -205,6 +235,9 @@ Example with overrides:
 
 Roles are markdown files with YAML frontmatter. Discovery is recursive for `*.md`
 under each configured root.
+
+v2 is a hard schema switch. Legacy flat arrays/maps for `skills` and `tools` are
+rejected. See [`docs/migration-v2.md`](docs/migration-v2.md).
 
 Example:
 
@@ -223,13 +256,29 @@ triggerGuidelines:
 model: anthropic/claude-sonnet-4-5:high
 thinking: high
 temperature: 0.2
+
 tools:
-  "*": allow
-  "web_*": ask
+  inherit: true
+  allow:
+    - "*"
+  ask:
+    - web_*
+  hidden:
+    - role_switch_internal_*
+
 skills:
-  "*": optional
-  systematic-debugging: required
-  requesting-code-review: optional
+  roots:
+    inherit: true
+    dirs:
+      - ./.pi/skillsets/shared
+  inherit_loaded: true
+  required:
+    - systematic-debugging
+  optional:
+    - requesting-code-review
+  hidden:
+    - role-creator
+
 prompt: append
 ---
 Role-specific instructions go here.
@@ -246,15 +295,21 @@ Role-specific instructions go here.
 
 ## Agent tool surface
 
-`role_switch` is the only LLM-callable tool in the package.
+The package exposes two LLM-callable tools:
 
-It is exposed only when all of these are true:
+- `role_switch` — switch to another agent-switchable role when switching is currently allowed
+- `skill` — `search`, `activate`, `deactivate`, or `info` for skills in scope for the active role
+
+`role_switch` is exposed only when all of these are true:
 
 - the current role is not sticky-locked
 - the current role is not user-only
 - at least one alternative agent-switchable role exists
 
-The tool returns the active role plus applied runtime changes.
+`role_switch` returns the active role plus applied runtime changes.
+
+`skill` follows the active role's skill visibility rules and uses the system-prompt
+template to keep the in-scope catalog and active skill content visible to the model.
 
 ## Bundled skill
 
