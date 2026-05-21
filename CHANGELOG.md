@@ -6,11 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [2.0.0-dev.0] - Unreleased
+## [2.0.0] - 2026-05-21
 
 ### Breaking
 
-- Placeholder for v2 breaking changes.
+- Hard-switched the role schema to v2 and removed the legacy schema activation path.
+- Reading `SKILL.md` is no longer the activation path; use `skill activate` instead.
+
+### Added
+
+- Added the `skill` tool for explicit skill activation.
+- Added the system-prompt template for the v2 role flow.
+- Added ask UX with a picker for user-mediated prompts.
+- Added `roles.ask.primaryToolArgs` for configuring primary ask-tool arguments.
+
+### Changed
+
+- Changed the internal `ResolvedRole` shape to support the v2 runtime contract.
+
+### Migration
+
+- See [docs/migration-v2.md](docs/migration-v2.md) for migration guidance.
 
 ## [0.2.1] - 2026-05-20
 
