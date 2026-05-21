@@ -13,19 +13,24 @@ triggerGuidelines:
 model: github-copilot/claude-opus-4.7:medium
 temperature: 0.3
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - write
+    - edit
 skills:
-  "*": hidden
-  brainstorming: required
-  extending-pi-agent: optional
+  required:
+    - brainstorming
+  optional:
+    - extending-pi-agent
+  hidden:
+    - '*'
 prompt: replace
 ---
 Think visually.

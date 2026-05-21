@@ -13,21 +13,26 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.1
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: allow
-  write: ask
-  edit: ask
-  "web_*": ask
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - bash
+  ask:
+    - write
+    - edit
+    - web_*
 skills:
-  "*": hidden
-  systematic-debugging: required
-  test-driven-development: required
-  verification-before-completion: optional
+  required:
+    - systematic-debugging
+    - test-driven-development
+  optional:
+    - verification-before-completion
+  hidden:
+    - '*'
 prompt: replace
 ---
 Debug systematically.

@@ -13,19 +13,24 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.1
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  "web_*": ask
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+  ask:
+    - bash
+    - web_*
 skills:
-  "*": hidden
-  requesting-code-review: required
-  receiving-code-review: optional
-  verification-before-completion: required
+  required:
+    - requesting-code-review
+    - verification-before-completion
+  optional:
+    - receiving-code-review
+  hidden:
+    - '*'
 prompt: replace
 ---
 You are in review mode.

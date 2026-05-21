@@ -13,18 +13,23 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.1
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: allow
-  "web_*": ask
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - bash
+  ask:
+    - web_*
 skills:
-  "*": hidden
-  verification-before-completion: required
-  finishing-a-development-branch: optional
+  required:
+    - verification-before-completion
+  optional:
+    - finishing-a-development-branch
+  hidden:
+    - '*'
 prompt: replace
 ---
 Validate like an end user.

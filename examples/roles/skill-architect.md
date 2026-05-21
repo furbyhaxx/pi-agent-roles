@@ -3,7 +3,7 @@ name: skill-architect
 label: Skill Architect
 description: Architecture role for pi skills, trigger design, skill packaging, and reusable skill ecosystems.
 index: 65
-color: #6366f1
+color: '#6366f1'
 activation: both
 sticky: false
 triggerDescription: Use for pi skill architecture, trigger description design, SKILL.md structure, skill packaging, or multi-skill ecosystem planning.
@@ -13,23 +13,28 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.2
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - bash
+    - write
+    - edit
 skills:
-  "*": hidden
-  skill-creator: required
-  writing-skills: required
-  llm-prompt-engineering: optional
-  extending-pi-agent: optional
-  role-creator: optional
+  required:
+    - skill-creator
+    - writing-skills
+  optional:
+    - llm-prompt-engineering
+    - extending-pi-agent
+    - role-creator
+  hidden:
+    - '*'
 prompt: replace
 ---
 Architect skills for discoverability, reuse, and stable triggering.

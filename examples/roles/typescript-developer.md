@@ -13,14 +13,20 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.15
 tools:
-  "*": allow
-  "web_*": ask
+  inherit: true
+  allow:
+    - '*'
+  ask:
+    - web_*
 skills:
-  "*": hidden
-  extending-pi-agent: required
-  test-driven-development: required
-  verification-before-completion: required
-  llm-tool-design: optional
+  required:
+    - extending-pi-agent
+    - test-driven-development
+    - verification-before-completion
+  optional:
+    - llm-tool-design
+  hidden:
+    - '*'
 prompt: append
 ---
 Optimize for correct TypeScript and idiomatic pi extension work.

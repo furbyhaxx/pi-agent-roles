@@ -13,22 +13,27 @@ triggerGuidelines:
 model: github-copilot/claude-opus-4.7:medium
 temperature: 0.2
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - bash
+    - write
+    - edit
 skills:
-  "*": hidden
-  extending-pi-agent: required
-  llm-tool-design: optional
-  llm-prompt-engineering: optional
-  role-creator: optional
+  required:
+    - extending-pi-agent
+  optional:
+    - llm-tool-design
+    - llm-prompt-engineering
+    - role-creator
+  hidden:
+    - '*'
 prompt: replace
 ---
 Design pi extension behavior at the architecture level first.

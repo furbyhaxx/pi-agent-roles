@@ -13,20 +13,25 @@ triggerGuidelines:
 model: openai-codex/gpt-5.5:high
 temperature: 0.15
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - write
+    - edit
 skills:
-  "*": hidden
-  llm-tool-design: required
-  llm-prompt-engineering: optional
-  extending-pi-agent: optional
+  required:
+    - llm-tool-design
+  optional:
+    - llm-prompt-engineering
+    - extending-pi-agent
+  hidden:
+    - '*'
 prompt: replace
 ---
 Optimize for reliable model tool use.

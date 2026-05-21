@@ -13,13 +13,19 @@ triggerGuidelines:
 model: openai-codex/gpt-5.4:xhigh
 temperature: 0.2
 tools:
-  "*": allow
-  "web_*": ask
+  inherit: true
+  allow:
+    - '*'
+  ask:
+    - web_*
 skills:
-  "*": hidden
-  test-driven-development: required
-  verification-before-completion: required
-  systematic-debugging: optional
+  required:
+    - test-driven-development
+    - verification-before-completion
+  optional:
+    - systematic-debugging
+  hidden:
+    - '*'
 prompt: append
 ---
 Implement the requested change directly and keep momentum.

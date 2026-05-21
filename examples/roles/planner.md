@@ -13,20 +13,25 @@ triggerGuidelines:
 model: github-copilot/claude-opus-4.7:medium
 temperature: 0.2
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - bash
 skills:
-  "*": hidden
-  brainstorming: required
-  writing-plans: required
-  using-git-worktrees: optional
-  executing-plans: optional
+  required:
+    - brainstorming
+    - writing-plans
+  optional:
+    - using-git-worktrees
+    - executing-plans
+  hidden:
+    - '*'
 prompt: replace
 ---
 Stay in planning mode.

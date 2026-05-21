@@ -3,7 +3,7 @@ name: ux-designer
 label: UX Designer
 description: Specialist role for user flows, ergonomics, friction reduction, and interaction design.
 index: 120
-color: #14b8a6
+color: '#14b8a6'
 activation: user
 sticky: false
 triggerDescription: Use for user journey design, interaction flow, workflow friction analysis, or usability-focused design decisions.
@@ -13,19 +13,24 @@ triggerGuidelines:
 model: github-copilot/claude-opus-4.7:medium
 temperature: 0.3
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - write
+    - edit
 skills:
-  "*": hidden
-  brainstorming: required
-  verification-before-completion: optional
+  required:
+    - brainstorming
+  optional:
+    - verification-before-completion
+  hidden:
+    - '*'
 prompt: replace
 ---
 Design for the human path through the work.

@@ -13,18 +13,22 @@ triggerGuidelines:
 model: deepseek/deepseek-v4-pro:high
 temperature: 0.15
 tools:
-  "*": deny
-  role_switch: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - bash
 skills:
-  "*": hidden
-  brainstorming: optional
-  verification-before-completion: optional
+  optional:
+    - brainstorming
+    - verification-before-completion
+  hidden:
+    - '*'
 prompt: replace
 ---
 Research first, synthesize second.

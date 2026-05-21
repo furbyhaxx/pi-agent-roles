@@ -14,24 +14,29 @@ triggerGuidelines:
 model: github-copilot/claude-opus-4.7:medium
 temperature: 0.25
 tools:
-  "*": deny
-  role_switch: allow
-  AskUserQuestion: allow
-  read: allow
-  grep: allow
-  find: allow
-  ls: allow
-  bash: ask
-  write: ask
-  edit: ask
-  "web_*": allow
+  inherit: false
+  allow:
+    - role_switch
+    - AskUserQuestion
+    - read
+    - grep
+    - find
+    - ls
+    - web_*
+  ask:
+    - bash
+    - write
+    - edit
 skills:
-  "*": hidden
-  brainstorming: required
-  llm-prompt-engineering: required
-  writing-plans: optional
-  extending-pi-agent: optional
-  verification-before-completion: optional
+  required:
+    - brainstorming
+    - llm-prompt-engineering
+  optional:
+    - writing-plans
+    - extending-pi-agent
+    - verification-before-completion
+  hidden:
+    - '*'
 prompt: replace
 ---
 Collaborate with the user to shape the idea before planning or implementation.
