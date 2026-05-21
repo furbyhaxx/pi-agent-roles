@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { discoverRoles } from "../src/discovery.js";
 
-async function writeRole(path: string, content: string): Promise<void> {
+export async function writeRole(path: string, content: string): Promise<void> {
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(path, content, "utf8");
 }
@@ -173,7 +174,9 @@ Agent-only helper instructions.
 	}
 }
 
-void main().catch((error) => {
-	console.error(error);
-	process.exitCode = 1;
-});
+if (fileURLToPath(import.meta.url) === resolve(process.argv[1] ?? "")) {
+	void main().catch((error) => {
+		console.error(error);
+		process.exitCode = 1;
+	});
+}
