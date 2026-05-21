@@ -17,12 +17,32 @@ function padAnsi(line: string, width: number): string {
 	return truncated + " ".repeat(remaining);
 }
 
+function formatList(values: readonly string[]): string {
+	return values.length > 0 ? values.join(", ") : "(none)";
+}
+
 function toolSummary(role: ResolvedRole): string {
-	return role.tools.map((rule) => `${rule.pattern}:${rule.action}`).join(", ");
+	return [
+		`inherit=${role.tools.inherit ? "yes" : "no"}`,
+		`allow=${formatList(role.tools.allow)}`,
+		`ask=${formatList(role.tools.ask)}`,
+		`hidden=${formatList(role.tools.hidden)}`,
+	].join("; ");
 }
 
 function skillSummary(role: ResolvedRole): string {
-	return role.skills.map((rule) => `${rule.pattern}:${rule.action}`).join(", ");
+	const roots = role.skills.roots.inherit
+		? "inherit"
+		: role.skills.roots.dirs.length > 0
+			? role.skills.roots.dirs.join(", ")
+			: "(none)";
+	return [
+		`roots=${roots}`,
+		`inherit_loaded=${role.skills.inheritLoaded ? "yes" : "no"}`,
+		`required=${formatList(role.skills.required)}`,
+		`optional=${formatList(role.skills.optional)}`,
+		`hidden=${formatList(role.skills.hidden)}`,
+	].join("; ");
 }
 
 export function formatRoleDetails(role: ResolvedRole, state: RoleRuntimeState): string {
@@ -160,9 +180,16 @@ triggerGuidelines:
   - Explain what the agent gains from this role.
 model: inherit
 temperature: inherit
-tools: all
+tools:
+  inherit: true
 skills:
-  "*": optional
+  roots:
+    inherit: true
+    dirs: []
+  inherit_loaded: true
+  required: []
+  optional: []
+  hidden: []
 prompt: append
 ---
 Add role-specific instructions here.

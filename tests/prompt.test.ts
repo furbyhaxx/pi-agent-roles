@@ -1,7 +1,30 @@
 import assert from "node:assert/strict";
 import type { Skill } from "@earendil-works/pi-coding-agent";
 import { buildRoleStateContext, filterHiddenSkillsFromPrompt, formatRolesSystemPrompt } from "../src/prompt.js";
-import type { ResolvedRole } from "../src/types.js";
+import type { ResolvedRole, RoleSkillsConfig, RoleToolsConfig } from "../src/types.js";
+
+function mkTools(overrides: Partial<RoleToolsConfig> = {}): RoleToolsConfig {
+	return {
+		inherit: true,
+		allow: [],
+		ask: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "allow" }],
+		...overrides,
+	};
+}
+
+function mkSkills(overrides: Partial<RoleSkillsConfig> = {}): RoleSkillsConfig {
+	return {
+		roots: { inherit: true, dirs: [] },
+		inheritLoaded: true,
+		required: [],
+		optional: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "optional" }],
+		...overrides,
+	};
+}
 
 const builderRole = {
 	name: "builder",
@@ -16,8 +39,8 @@ const builderRole = {
 	model: { raw: "anthropic/claude-sonnet-4-5:high", provider: "anthropic", modelId: "claude-sonnet-4-5", inlineThinking: "high", inherit: false },
 	thinking: "high",
 	temperature: 0.2,
-	tools: [{ pattern: "*", action: "allow" }],
-	skills: [{ pattern: "*", action: "optional" }],
+	tools: mkTools(),
+	skills: mkSkills(),
 	hasExplicitSkills: false,
 	promptMode: "append",
 	body: "Builder instructions.",
@@ -34,10 +57,15 @@ const reviewerRole = {
 	description: "Review role.",
 	triggerDescription: "Use for audit, review, and critique tasks.",
 	body: "Reviewer instructions.",
-	skills: [
-		{ pattern: "*", action: "hidden" },
-		{ pattern: "requesting-code-review", action: "required" },
-	],
+	skills: mkSkills({
+		required: ["requesting-code-review"],
+		hidden: ["*"],
+		rules: [
+			{ pattern: "*", action: "optional" },
+			{ pattern: "*", action: "hidden" },
+			{ pattern: "requesting-code-review", action: "required" },
+		],
+	}),
 	hasExplicitSkills: true,
 } satisfies ResolvedRole;
 

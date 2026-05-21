@@ -67,6 +67,8 @@ export function buildRoleStateContext(options: {
 }
 
 export function filterHiddenSkillsFromPrompt(systemPrompt: string, skills: readonly Skill[], role: ResolvedRole): string {
+	const hasHiddenSkillPolicies = role.skills.hidden.length > 0 || role.skills.rules.some((rule) => rule.action === "hidden");
+	if (!hasHiddenSkillPolicies) return systemPrompt;
 	const hiddenPaths = new Set(
 		skills.filter((skill) => matchSkillPolicy(role, skill.name) === "hidden").map((skill) => skill.filePath),
 	);

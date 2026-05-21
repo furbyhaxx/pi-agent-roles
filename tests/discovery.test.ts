@@ -32,9 +32,11 @@ triggerDescription: Use for general implementation work.
 color: orange
 model: anthropic/claude-sonnet-4-5:high
 temperature: 0.2
-tools: all
+tools:
+  inherit: true
 skills:
-  "*": optional
+  optional:
+    - "*"
 prompt: append
 ---
 Global builder instructions.
@@ -52,9 +54,16 @@ sticky: false
 triggerDescription: Use for local implementation work.
 color: accent
 tools:
-  "*": ask
-  bash: allow
-skills: [systematic-debugging, requesting-code-review]
+  inherit: false
+  allow:
+    - bash
+  ask:
+    - read
+skills:
+  required:
+    - systematic-debugging
+  optional:
+    - requesting-code-review
 prompt: append
 ---
 Project builder instructions.
@@ -70,10 +79,17 @@ activation: both
 sticky: false
 triggerDescription: Use for code review and critique.
 color: "#2244ff"
-tools: [read, grep, find]
+tools:
+  inherit: false
+  allow:
+    - read
+    - grep
+    - find
 skills:
-  "*": hidden
-  requesting-code-review: required
+  required:
+    - requesting-code-review
+  hidden:
+    - "*"
 prompt: replace
 ---
 Reviewer instructions.
@@ -141,14 +157,18 @@ Agent-only helper instructions.
 		assert.equal(discovered.roles[0]?.label, "Project Builder");
 		assert.equal(discovered.roles[0]?.scope, "project");
 		assert.equal(discovered.roles[0]?.displayColor, "accent");
-		assert.equal(discovered.roles[0]?.tools.at(0)?.action, "ask");
-		assert.equal(discovered.roles[0]?.tools.at(1)?.pattern, "bash");
-		assert.equal(discovered.roles[0]?.skills.at(0)?.action, "hidden");
-		assert.equal(discovered.roles[0]?.skills.at(1)?.pattern, "systematic-debugging");
+		assert.equal(discovered.roles[0]?.tools.inherit, false);
+		assert.deepEqual(discovered.roles[0]?.tools.allow, ["bash"]);
+		assert.deepEqual(discovered.roles[0]?.tools.ask, ["read"]);
+		assert.deepEqual(discovered.roles[0]?.skills.required, ["systematic-debugging"]);
+		assert.deepEqual(discovered.roles[0]?.skills.optional, ["requesting-code-review"]);
 		assert.equal(discovered.roles[0]?.agentSwitchable, true);
 		assert.equal(discovered.roles[1]?.name, "reviewer");
 		assert.equal(discovered.roles[1]?.promptMode, "replace");
 		assert.equal(discovered.roles[1]?.displayColor, "#2244ff");
+		assert.deepEqual(discovered.roles[1]?.tools.allow, ["read", "grep", "find"]);
+		assert.deepEqual(discovered.roles[1]?.skills.hidden, ["*"]);
+		assert.deepEqual(discovered.roles[1]?.skills.required, ["requesting-code-review"]);
 		assert.match(discovered.roles[2]?.displayColor ?? "", /^#[0-9a-f]{6}$/i);
 		assert.equal(discovered.roles[2]?.sticky, false, "sticky true on agent-only roles should be ignored");
 		assert.equal(discovered.roles[2]?.agentSwitchable, false, "missing triggerDescription must keep the role user-hidden from the agent");

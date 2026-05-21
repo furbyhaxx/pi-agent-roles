@@ -8,7 +8,30 @@ import {
 	resolveRoleManagerLayout,
 	shouldShowFallbackWidget,
 } from "../src/display.js";
-import type { ResolvedRole } from "../src/types.js";
+import type { ResolvedRole, RoleSkillsConfig, RoleToolsConfig } from "../src/types.js";
+
+function mkTools(overrides: Partial<RoleToolsConfig> = {}): RoleToolsConfig {
+	return {
+		inherit: true,
+		allow: [],
+		ask: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "allow" }],
+		...overrides,
+	};
+}
+
+function mkSkills(overrides: Partial<RoleSkillsConfig> = {}): RoleSkillsConfig {
+	return {
+		roots: { inherit: true, dirs: [] },
+		inheritLoaded: true,
+		required: [],
+		optional: [],
+		hidden: [],
+		rules: [{ pattern: "*", action: "optional" }],
+		...overrides,
+	};
+}
 
 const builderRole = {
 	name: "builder",
@@ -23,8 +46,8 @@ const builderRole = {
 	model: { raw: "inherit", inherit: true },
 	thinking: undefined,
 	temperature: undefined,
-	tools: [{ pattern: "*", action: "allow" }],
-	skills: [{ pattern: "*", action: "optional" }],
+	tools: mkTools(),
+	skills: mkSkills(),
 	hasExplicitSkills: false,
 	promptMode: "append",
 	body: "Instructions.",

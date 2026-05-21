@@ -10,9 +10,9 @@ const content = readFileSync(examplePath, "utf8");
 assert.match(content, /^---\nname: brainstormer\n/m);
 assert.match(content, /label: Brainstormer/);
 assert.match(content, /triggerDescription: Use when the user has an idea that needs collaborative exploration, refinement, feasibility checking, and a resulting design before implementation planning\./);
-assert.match(content, /brainstorming: required/);
-assert.match(content, /writing-plans: optional/);
-assert.match(content, /AskUserQuestion: allow/);
+assert.match(content, /skills:\n(?:.*\n)*?  required:\n(?:.*\n)*?  - brainstorming/);
+assert.match(content, /skills:\n(?:.*\n)*?  optional:\n(?:.*\n)*?  - writing-plans/);
+assert.match(content, /tools:\n(?:.*\n)*?  allow:\n(?:.*\n)*?  - AskUserQuestion/);
 assert.match(content, /short proof-of-work/i);
 
 const linkStat = lstatSync(localLinkPath);

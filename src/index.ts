@@ -151,11 +151,9 @@ function stripPersistedState(state: RoleRuntimeState): Record<string, unknown> {
 }
 
 function skillLists(role: ResolvedRole, skills: readonly Skill[]): { required: string[]; optional: string[] } {
-	const required = skills.filter((skill) => matchSkillPolicy(role, skill.name) === "required").map((skill) => skill.name);
-	const optional = skills.filter((skill) => matchSkillPolicy(role, skill.name) === "optional").map((skill) => skill.name);
 	return {
-		required: required.length > 0 ? required : role.skills.filter((rule) => rule.action === "required").map((rule) => rule.pattern),
-		optional: optional.length > 0 ? optional : role.skills.filter((rule) => rule.action === "optional" && rule.pattern !== "*").map((rule) => rule.pattern),
+		required: role.skills.required,
+		optional: role.skills.optional,
 	};
 }
 
