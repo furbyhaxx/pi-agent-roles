@@ -116,6 +116,18 @@ const visible = filterVisibleTools(["read", "bash", "web_search", "role_switch"]
 assert.deepEqual(visible.visibleTools, ["read", "bash", "role_switch"]);
 assert.deepEqual(visible.askTools, ["read", "role_switch"]);
 
+const hiddenOverridesAllow = mkRole({
+	name: "hidden-overrides-allow",
+	label: "Hidden Overrides Allow",
+	tools: mkTools({
+		hidden: ["web_*"],
+		rules: [{ pattern: "*", action: "allow" }],
+	}),
+});
+const hiddenVisible = filterVisibleTools(["read", "web_search"], hiddenOverridesAllow, true);
+assert.deepEqual(hiddenVisible.visibleTools, ["read"]);
+assert.deepEqual(hiddenVisible.askTools, []);
+
 assert.deepEqual(getAgentSwitchableRoles([builder, reviewer, userOnly], builder).map((role) => role.name), ["reviewer"]);
 
 const description = buildRoleSwitchDescription({
