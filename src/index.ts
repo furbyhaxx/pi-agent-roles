@@ -21,6 +21,7 @@ import {
 	matchToolPolicy,
 } from "./policy.js";
 import { buildRoleStateContext, filterSkillsForRole } from "./prompt.js";
+import { buildSkillToolDescription, createSkillToolHandler, SKILL_TOOL_PARAMETERS } from "./skill-tool.js";
 import { ROLE_STATE_ENTRY_TYPE, applyPendingUserRoleSwitch, clearStickyLock, createRoleState, reconstructRoleState, requestUserRoleSwitch } from "./state.js";
 import { loadSystemPromptTemplate } from "./template-loader.js";
 import { renderTemplate } from "./template.js";
@@ -36,6 +37,7 @@ import {
 	PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE,
 	ROLE_MANAGER_COMMAND,
 	ROLE_RELOAD_COMMAND,
+	ROLE_SKILL_TOOL_NAME,
 	ROLE_SWITCH_TOOL_NAME,
 	ROLE_UNSTICK_COMMAND,
 	type DiscoverRolesResult,
@@ -219,6 +221,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			globalRoots: loadedConfig.globalRoots,
 			projectRoots: loadedConfig.projectRoots,
 		});
+		registerSkillTool();
 		registerRoleSwitchTool();
 	}
 
@@ -342,6 +345,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			}
 		}
 		if (role.thinking) pi.setThinkingLevel(role.thinking);
+		registerSkillTool();
 		registerRoleSwitchTool();
 		const visibility = updateVisibleTools();
 		updateDisplay(ctx);
@@ -385,6 +389,33 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 				return {
 					content: [{ type: "text", text: [result.details.summary, warningText].filter(Boolean).join("\n\n") }],
 					details: result.details,
+				};
+			},
+		});
+	}
+
+	function registerSkillTool(): void {
+		const role = currentRole();
+		if (!role) return;
+		const execute = createSkillToolHandler({
+			getRole: currentRole,
+			getActive: () => activeSkillState,
+			setActive: (next) => {
+				activeSkillState = [...next];
+			},
+			allSkills: () => lastKnownSkills,
+			persist: persistActiveSkills,
+		});
+		pi.registerTool({
+			name: ROLE_SKILL_TOOL_NAME,
+			label: "Skill",
+			description: buildSkillToolDescription(role, lastKnownSkills),
+			parameters: SKILL_TOOL_PARAMETERS,
+			async execute(_toolCallId, params) {
+				const details = await execute(params as { action?: string; name?: string; query?: string; limit?: number });
+				return {
+					content: [{ type: "text", text: JSON.stringify(details, null, 2) }],
+					details,
 				};
 			},
 		});
@@ -435,6 +466,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			ctx.ui.notify(`Activated role ${role.label}.`, "info");
 		} else {
 			persistState();
+			registerSkillTool();
 			registerRoleSwitchTool();
 			ctx.ui.notify(`Queued role switch to ${role.label} until the agent becomes idle.`, "info");
 		}
@@ -585,6 +617,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			state: roleStateContext,
 		});
 		liveRoleStateContext = roleStateContext;
+		registerSkillTool();
 		registerRoleSwitchTool();
 		updateVisibleTools();
 		return {
