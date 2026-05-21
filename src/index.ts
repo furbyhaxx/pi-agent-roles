@@ -1,7 +1,7 @@
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import type { Skill } from "@earendil-works/pi-coding-agent";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
+import type { BuildSystemPromptOptions, ExtensionAPI, ExtensionContext, Skill } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { discoverRoles } from "./discovery.js";
 import {
@@ -20,8 +20,10 @@ import {
 	matchSkillPolicy,
 	matchToolPolicy,
 } from "./policy.js";
-import { buildRoleStateContext, filterHiddenSkillsFromPrompt, formatRolesSystemPrompt } from "./prompt.js";
+import { buildRoleStateContext, filterSkillsForRole } from "./prompt.js";
 import { ROLE_STATE_ENTRY_TYPE, applyPendingUserRoleSwitch, clearStickyLock, createRoleState, reconstructRoleState, requestUserRoleSwitch } from "./state.js";
+import { loadSystemPromptTemplate } from "./template-loader.js";
+import { renderTemplate } from "./template.js";
 import { createRoleFlow, editRoleFlow, showRoleDetails, showRoleManager } from "./ui.js";
 import { paintColor } from "./theme.js";
 import {
@@ -44,11 +46,39 @@ const DEFAULT_ROLE_INSTRUCTIONS = [
 	"Treat required skills as mandatory when they are relevant to the task.",
 	"Do not bypass denied tools or hidden skills.",
 ].join("\n");
+type BuildSystemPromptFn = (options: BuildSystemPromptOptions) => string;
+type ActiveSkillStateEntry = { name: string; filePath: string; contentHash: string };
+type ActiveSkillBody = { name: string; filePath: string; body: string };
+type PiCodingAgentModule = typeof PiCodingAgent & { buildSystemPrompt?: BuildSystemPromptFn };
+
+let buildSystemPromptPromise: Promise<BuildSystemPromptFn> | undefined;
 
 const ROLE_SWITCH_PARAMETERS = Type.Object({
 	role: Type.String({ description: "Target role id." }),
 	reason: Type.Optional(Type.String({ description: "Optional short rationale for observability only." })),
 });
+
+function resolveBuildSystemPrompt(): Promise<BuildSystemPromptFn> {
+	if (!buildSystemPromptPromise) {
+		const rootExport = (PiCodingAgent as PiCodingAgentModule).buildSystemPrompt;
+		buildSystemPromptPromise = rootExport
+			? Promise.resolve(rootExport)
+			: (async () => {
+				const entryUrl = import.meta.resolve("@earendil-works/pi-coding-agent");
+				const internalUrl = pathToFileURL(resolve(dirname(fileURLToPath(entryUrl)), "core", "system-prompt.js")).href;
+				const internalModule = await import(internalUrl) as { buildSystemPrompt?: BuildSystemPromptFn };
+				if (typeof internalModule.buildSystemPrompt !== "function") {
+					throw new Error("@earendil-works/pi-coding-agent buildSystemPrompt export is unavailable.");
+				}
+				return internalModule.buildSystemPrompt;
+			})();
+	}
+	return buildSystemPromptPromise;
+}
+
+function readActiveSkillBodies(_activeSkillState: readonly ActiveSkillStateEntry[]): ActiveSkillBody[] {
+	return [];
+}
 
 function subscribeEventBus(
 	eventBus: {
@@ -174,6 +204,7 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	let fancyEditorReady = false;
 	let activeUiContext: ExtensionContext | undefined;
 	let liveRoleStateContext = "";
+	let activeSkillState: ActiveSkillStateEntry[] = [];
 	const shownDiagnostics = new Set<string>();
 	const unsubscribeFancyEditorReady = subscribeEventBus(pi.events, PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => {
 		fancyEditorReady = payload === true;
@@ -194,6 +225,23 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		if (discovered.roles.length === 0) return undefined;
 		if (!state) return discovered.roles[0];
 		return discovered.roles.find((role) => role.name === state?.activeRole) ?? discovered.roles[0];
+	}
+
+	function currentRoleStateContext(): string {
+		const role = currentRole();
+		if (!role || !state) return "";
+		const skills = skillLists(role, lastKnownSkills);
+		const reminder = state.queuedReminder;
+		if (reminder) state = { ...state, queuedReminder: undefined };
+		return buildRoleStateContext({
+			currentRole: { ...role, body: currentInstructions(role) },
+			activationSource: state.activationSource,
+			stickyLocked: state.stickyLocked,
+			switchingAllowed: roleSwitchAdvertised(role, state, discovered.roles),
+			requiredSkills: skills.required,
+			optionalSkills: skills.optional,
+			reminder,
+		});
 	}
 
 	function branchState(ctx: ExtensionContext, reason: "startup" | "restore"): RoleRuntimeState {
@@ -477,39 +525,57 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		await applyRoleState(ctx, state, { persist: false });
 	});
 
-	pi.on("before_agent_start", (event, ctx) => {
+	pi.on("before_agent_start", async (event, ctx) => {
 		refreshCatalog(ctx.cwd);
 		lastKnownSkills = event.systemPromptOptions.skills ?? [];
 		const role = currentRole();
 		if (!role || !state) return;
-		const filtered = filterHiddenSkillsFromPrompt(event.systemPrompt, lastKnownSkills, role);
-		const rolesSection = formatRolesSystemPrompt({
-			currentRole: role,
-			switchableRoles: getAgentSwitchableRoles(discovered.roles, role),
-			stickyLocked: state.stickyLocked,
+		const buildSystemPrompt = await resolveBuildSystemPrompt();
+		const baseOptions: BuildSystemPromptOptions = {
+			...event.systemPromptOptions,
+			skills: [],
+		};
+		const builtin = buildSystemPrompt(baseOptions);
+		const roleStateContext = currentRoleStateContext();
+		const inScopeSkills = filterSkillsForRole(lastKnownSkills, role);
+		const activeSkillBodies = readActiveSkillBodies(activeSkillState);
+		const template = loadSystemPromptTemplate(ctx.cwd);
+		const rendered = renderTemplate(template, {
+			builtinSystemPrompt: builtin,
+			role: {
+				name: role.name,
+				label: role.label,
+				description: role.description,
+				triggerDescription: role.triggerDescription ?? "",
+				body: currentInstructions(role),
+				requiredSkills: role.skills.required,
+				optionalSkills: role.skills.optional,
+				hiddenSkills: role.skills.hidden,
+			},
+			availableSkills: inScopeSkills.map((skill) => ({
+				name: skill.name,
+				description: skill.description ?? "",
+				filePath: skill.filePath,
+			})),
+			activeSkills: activeSkillBodies,
+			switchableRoles: getAgentSwitchableRoles(discovered.roles, role).map((switchableRole) => ({
+				name: switchableRole.name,
+				label: switchableRole.label,
+				triggerDescription: switchableRole.triggerDescription ?? "",
+			})),
+			switching: { allowed: roleSwitchAdvertised(role, state, discovered.roles) },
+			state: roleStateContext,
 		});
+		liveRoleStateContext = roleStateContext;
 		registerRoleSwitchTool();
 		updateVisibleTools();
 		return {
-			systemPrompt: `${filtered}\n\n${rolesSection}`,
+			systemPrompt: rendered,
 		};
 	});
 
 	pi.on("context", () => {
-		const role = currentRole();
-		if (!role || !state) return;
-		const skills = skillLists(role, lastKnownSkills);
-		const reminder = state.queuedReminder;
-		if (reminder) state = { ...state, queuedReminder: undefined };
-		liveRoleStateContext = buildRoleStateContext({
-			currentRole: { ...role, body: currentInstructions(role) },
-			activationSource: state.activationSource,
-			stickyLocked: state.stickyLocked,
-			switchingAllowed: roleSwitchAdvertised(role, state, discovered.roles),
-			requiredSkills: skills.required,
-			optionalSkills: skills.optional,
-			reminder,
-		});
+		liveRoleStateContext = currentRoleStateContext();
 	});
 
 	pi.on("before_provider_request", (event, ctx) => {

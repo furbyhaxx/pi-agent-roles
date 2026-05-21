@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { Skill } from "@earendil-works/pi-coding-agent";
-import { buildRoleStateContext, filterHiddenSkillsFromPrompt, formatRolesSystemPrompt } from "../src/prompt.js";
+import { buildRoleStateContext, filterHiddenSkillsFromPrompt, filterSkillsForRole, formatRolesSystemPrompt } from "../src/prompt.js";
 import type { ResolvedRole, RoleSkillsConfig, RoleToolsConfig } from "../src/types.js";
 
 function mkTools(overrides: Partial<RoleToolsConfig> = {}): RoleToolsConfig {
@@ -139,5 +139,19 @@ const promptWithSkills = `<available_skills>
 const filtered = filterHiddenSkillsFromPrompt(promptWithSkills, loadedSkills, reviewerRole);
 assert.doesNotMatch(filtered, /systematic-debugging/);
 assert.match(filtered, /requesting-code-review/);
+
+const visibleSkills = filterSkillsForRole(loadedSkills, reviewerRole);
+assert.deepEqual(visibleSkills.map((skill) => skill.name), ["requesting-code-review"]);
+
+const scopedSkills = filterSkillsForRole(
+	loadedSkills,
+	{
+		...builderRole,
+		skills: mkSkills({
+			roots: { inherit: false, dirs: ["/tmp/requesting-code-review"] },
+		}),
+	},
+);
+assert.deepEqual(scopedSkills.map((skill) => skill.name), ["requesting-code-review"]);
 
 console.log("prompt tests passed");

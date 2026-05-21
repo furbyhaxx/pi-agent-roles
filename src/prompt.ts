@@ -1,6 +1,12 @@
+import { isAbsolute, relative, resolve } from "node:path";
 import type { Skill } from "@earendil-works/pi-coding-agent";
 import type { ResolvedRole } from "./types.js";
 import { matchSkillPolicy } from "./policy.js";
+
+function isPathWithinRoot(path: string, root: string): boolean {
+	const relativePath = relative(resolve(root), resolve(path));
+	return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
 
 function escapeXml(input: string): string {
 	return input
@@ -64,6 +70,13 @@ export function buildRoleStateContext(options: {
 	}
 	lines.push("</role-state>");
 	return lines.join("\n");
+}
+
+export function filterSkillsForRole(skills: readonly Skill[], role: ResolvedRole): Skill[] {
+	const inScopeSkills = role.skills.roots.inherit
+		? skills
+		: skills.filter((skill) => role.skills.roots.dirs.some((root) => isPathWithinRoot(skill.filePath, root)));
+	return inScopeSkills.filter((skill) => matchSkillPolicy(role, skill.name) !== "hidden");
 }
 
 export function filterHiddenSkillsFromPrompt(systemPrompt: string, skills: readonly Skill[], role: ResolvedRole): string {
