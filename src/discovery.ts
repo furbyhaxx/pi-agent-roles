@@ -1,19 +1,18 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { getAgentDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { resolveDisplayColor } from "./colors.js";
+import { resolveConfiguredPath } from "./config.js";
 import type {
 	DiscoverRolesResult,
 	ModelSelection,
+	RoleSkillsConfig,
+	RoleToolsConfig,
 	ResolvedRole,
 	RoleActivation,
 	RoleDiagnostic,
 	RolePromptMode,
-	SkillPolicyAction,
-	SkillPolicyRule,
 	ThinkingLevel,
-	ToolPolicyAction,
-	ToolPolicyRule,
 } from "./types.js";
 
 const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
@@ -36,6 +35,15 @@ interface RawRoleFrontmatter extends Record<string, unknown> {
 	skills?: unknown;
 	prompt?: unknown;
 	metadata?: unknown;
+}
+
+const TOOL_CONFIG_KEYS = new Set(["inherit", "allow", "ask", "hidden"]);
+const SKILL_CONFIG_KEYS = new Set(["roots", "inherit_loaded", "required", "optional", "hidden"]);
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
 }
 
 function isValidRoleName(name: string): boolean {
@@ -106,49 +114,105 @@ function normalizeStringArray(value: unknown): string[] {
 	return [];
 }
 
-function normalizeToolRules(value: unknown): ToolPolicyRule[] {
-	if (value === undefined || value === null) return [{ pattern: "*", action: "allow" }];
-	if (value === "all") return [{ pattern: "*", action: "allow" }];
-	const shorthand = normalizeStringArray(value);
-	if (shorthand.length > 0) {
-		return [{ pattern: "*", action: "deny" }, ...shorthand.map((pattern) => ({ pattern, action: "allow" as const }))];
-	}
-	if (value && typeof value === "object" && !Array.isArray(value)) {
-		const rules: ToolPolicyRule[] = [];
-		for (const [pattern, action] of Object.entries(value as Record<string, unknown>)) {
-			if (action === "allow" || action === "ask" || action === "deny") {
-				rules.push({ pattern, action });
-			}
-		}
-		return rules.length > 0 ? rules : [{ pattern: "*", action: "allow" }];
-	}
-	return [{ pattern: "*", action: "allow" }];
+function pushLegacyShapeDiagnostic(diagnostics: RoleDiagnostic[], path: string, section: "skills" | "tools"): void {
+	diagnostics.push({
+		level: "warning",
+		message: `legacy ${section} shape is no longer supported — see docs/migration.md`,
+		path,
+	});
 }
 
-function normalizeSkillRules(value: unknown): { rules: SkillPolicyRule[]; hasExplicitSkills: boolean } {
+function normalizeToolsConfig(value: unknown, diagnostics: RoleDiagnostic[], path: string): RoleToolsConfig | undefined {
 	if (value === undefined || value === null) {
-		return { rules: [{ pattern: "*", action: "optional" }], hasExplicitSkills: false };
-	}
-	const shorthand = normalizeStringArray(value);
-	if (shorthand.length > 0) {
 		return {
-			rules: [{ pattern: "*", action: "hidden" }, ...shorthand.map((pattern) => ({ pattern, action: "required" as const }))],
-			hasExplicitSkills: true,
+			inherit: true,
+			allow: [],
+			ask: [],
+			hidden: [],
+			rules: [{ pattern: "*", action: "allow" }],
 		};
 	}
-	if (value && typeof value === "object" && !Array.isArray(value)) {
-		const rules: SkillPolicyRule[] = [];
-		for (const [pattern, action] of Object.entries(value as Record<string, unknown>)) {
-			if (action === "required" || action === "optional" || action === "hidden") {
-				rules.push({ pattern, action });
-			}
-		}
+	if (Array.isArray(value) || typeof value !== "object") {
+		pushLegacyShapeDiagnostic(diagnostics, path, "tools");
+		return undefined;
+	}
+
+	const record = value as Record<string, unknown>;
+	const hasLegacyMapping = Object.entries(record).some(([key, action]) => !TOOL_CONFIG_KEYS.has(key) && (action === "allow" || action === "ask" || action === "deny"));
+	if (hasLegacyMapping) {
+		pushLegacyShapeDiagnostic(diagnostics, path, "tools");
+		return undefined;
+	}
+
+	const inherit = typeof record.inherit === "boolean" ? record.inherit : true;
+	const allow = normalizeStringArray(record.allow);
+	const ask = normalizeStringArray(record.ask);
+	const hidden = normalizeStringArray(record.hidden);
+	return {
+		inherit,
+		allow,
+		ask,
+		hidden,
+		rules: [
+			{ pattern: "*", action: inherit ? "allow" : "deny" },
+			...allow.map((pattern) => ({ pattern, action: "allow" as const })),
+			...ask.map((pattern) => ({ pattern, action: "ask" as const })),
+			...hidden.map((pattern) => ({ pattern, action: "deny" as const })),
+		],
+	};
+}
+
+function normalizeSkillsConfig(value: unknown, diagnostics: RoleDiagnostic[], path: string): { config: RoleSkillsConfig; hasExplicit: boolean } | undefined {
+	if (value === undefined || value === null) {
 		return {
-			rules: rules.length > 0 ? rules : [{ pattern: "*", action: "optional" }],
-			hasExplicitSkills: true,
+			config: {
+				roots: { inherit: true, dirs: [] },
+				inheritLoaded: true,
+				required: [],
+				optional: [],
+				hidden: [],
+				rules: [{ pattern: "*", action: "optional" }],
+			},
+			hasExplicit: false,
 		};
 	}
-	return { rules: [{ pattern: "*", action: "optional" }], hasExplicitSkills: false };
+	if (Array.isArray(value) || typeof value !== "object") {
+		pushLegacyShapeDiagnostic(diagnostics, path, "skills");
+		return undefined;
+	}
+
+	const record = value as Record<string, unknown>;
+	const hasLegacyMapping = Object.entries(record).some(([key, action]) => !SKILL_CONFIG_KEYS.has(key) && (action === "required" || action === "optional" || action === "hidden"));
+	if (hasLegacyMapping) {
+		pushLegacyShapeDiagnostic(diagnostics, path, "skills");
+		return undefined;
+	}
+
+	const rootsRecord = asRecord(record.roots);
+	const rootsBaseDir = dirname(path);
+	const roots = {
+		inherit: typeof rootsRecord.inherit === "boolean" ? rootsRecord.inherit : true,
+		dirs: [...new Set(normalizeStringArray(rootsRecord.dirs).map((entry) => resolveConfiguredPath(entry, rootsBaseDir)))],
+	};
+	const required = normalizeStringArray(record.required);
+	const optional = normalizeStringArray(record.optional);
+	const hidden = normalizeStringArray(record.hidden);
+	return {
+		config: {
+			roots,
+			inheritLoaded: typeof record.inherit_loaded === "boolean" ? record.inherit_loaded : true,
+			required,
+			optional,
+			hidden,
+			rules: [
+				{ pattern: "*", action: "optional" },
+				...optional.map((pattern) => ({ pattern, action: "optional" as const })),
+				...hidden.map((pattern) => ({ pattern, action: "hidden" as const })),
+				...required.map((pattern) => ({ pattern, action: "required" as const })),
+			],
+		},
+		hasExplicit: true,
+	};
 }
 
 function normalizePromptMode(value: unknown): RolePromptMode {
@@ -176,8 +240,21 @@ function fallbackRole(agentDir: string): ResolvedRole {
 		model: { raw: "inherit", inherit: true },
 		thinking: undefined,
 		temperature: undefined,
-		tools: [{ pattern: "*", action: "allow" }],
-		skills: [{ pattern: "*", action: "optional" }],
+		tools: {
+			inherit: true,
+			allow: [],
+			ask: [],
+			hidden: [],
+			rules: [{ pattern: "*", action: "allow" }],
+		},
+		skills: {
+			roots: { inherit: true, dirs: [] },
+			inheritLoaded: true,
+			required: [],
+			optional: [],
+			hidden: [],
+			rules: [{ pattern: "*", action: "optional" }],
+		},
 		hasExplicitSkills: false,
 		promptMode: "append",
 		body: "",
@@ -233,7 +310,10 @@ function parseRoleFile(path: string, scope: "global" | "project", agentDir: stri
 		const model = parseModelSelection(frontmatter.model, diagnostics, path);
 		const explicitThinking = normalizeThinking(frontmatter.thinking);
 		const thinking = explicitThinking ?? model.inlineThinking;
-		const { rules: skills, hasExplicitSkills } = normalizeSkillRules(frontmatter.skills);
+		const tools = normalizeToolsConfig(frontmatter.tools, diagnostics, path);
+		const skillsConfig = normalizeSkillsConfig(frontmatter.skills, diagnostics, path);
+		if (!tools || !skillsConfig) return { diagnostics };
+		const { config: skills, hasExplicit: hasExplicitSkills } = skillsConfig;
 		const activation = normalizeActivation(frontmatter.activation);
 		const triggerDescription = typeof frontmatter.triggerDescription === "string" && frontmatter.triggerDescription.trim() !== ""
 			? frontmatter.triggerDescription.trim()
@@ -264,7 +344,7 @@ function parseRoleFile(path: string, scope: "global" | "project", agentDir: stri
 				model,
 				thinking,
 				temperature: normalizeTemperature(frontmatter.temperature),
-				tools: normalizeToolRules(frontmatter.tools),
+				tools,
 				skills,
 				hasExplicitSkills,
 				promptMode: normalizePromptMode(frontmatter.prompt),
