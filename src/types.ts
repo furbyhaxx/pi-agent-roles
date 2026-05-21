@@ -147,6 +147,7 @@ export interface RoleDisplayPayload {
 }
 
 export const ROLE_STATE_ENTRY_TYPE = "pi-agent-roles-state";
+export const PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE = "pi-agent-roles-active-skills";
 export const ROLE_SWITCH_TOOL_NAME = "role_switch";
 export const ROLE_MANAGER_COMMAND = "role:manage";
 export const ROLE_RELOAD_COMMAND = "role:reload";

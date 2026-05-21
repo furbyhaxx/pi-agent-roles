@@ -1,7 +1,7 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
-import type { BuildSystemPromptOptions, ExtensionAPI, ExtensionContext, Skill } from "@earendil-works/pi-coding-agent";
+import type { BuildSystemPromptOptions, ExtensionAPI, ExtensionContext, SessionEntry, Skill } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { discoverRoles } from "./discovery.js";
 import {
@@ -27,7 +27,13 @@ import { renderTemplate } from "./template.js";
 import { createRoleFlow, editRoleFlow, showRoleDetails, showRoleManager } from "./ui.js";
 import { paintColor } from "./theme.js";
 import {
+	readActiveSkillBodies,
+	reconstructActiveSkills,
+	type ActiveSkill,
+} from "./skill-runtime.js";
+import {
 	PI_AGENT_ROLES_ACTIVE_ROLE_EVENT,
+	PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE,
 	ROLE_MANAGER_COMMAND,
 	ROLE_RELOAD_COMMAND,
 	ROLE_SWITCH_TOOL_NAME,
@@ -47,8 +53,6 @@ const DEFAULT_ROLE_INSTRUCTIONS = [
 	"Do not bypass denied tools or hidden skills.",
 ].join("\n");
 type BuildSystemPromptFn = (options: BuildSystemPromptOptions) => string;
-type ActiveSkillStateEntry = { name: string; filePath: string; contentHash: string };
-type ActiveSkillBody = { name: string; filePath: string; body: string };
 type PiCodingAgentModule = typeof PiCodingAgent & { buildSystemPrompt?: BuildSystemPromptFn };
 
 let buildSystemPromptPromise: Promise<BuildSystemPromptFn> | undefined;
@@ -74,10 +78,6 @@ function resolveBuildSystemPrompt(): Promise<BuildSystemPromptFn> {
 			})();
 	}
 	return buildSystemPromptPromise;
-}
-
-function readActiveSkillBodies(_activeSkillState: readonly ActiveSkillStateEntry[]): ActiveSkillBody[] {
-	return [];
 }
 
 function subscribeEventBus(
@@ -199,12 +199,13 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 	let discovered: DiscoverRolesResult = { roles: [], diagnostics: [] };
 	let state: RoleRuntimeState | undefined;
 	let lastPersistedKey = "";
+	let lastPersistedActiveSkillsKey = "";
 	let lastKnownSkills: Skill[] = [];
 	let shortcutRegistered = false;
 	let fancyEditorReady = false;
 	let activeUiContext: ExtensionContext | undefined;
 	let liveRoleStateContext = "";
-	let activeSkillState: ActiveSkillStateEntry[] = [];
+	let activeSkillState: ActiveSkill[] = [];
 	const shownDiagnostics = new Set<string>();
 	const unsubscribeFancyEditorReady = subscribeEventBus(pi.events, PI_FANCY_EDITOR_ROLE_DISPLAY_READY_EVENT, (payload) => {
 		fancyEditorReady = payload === true;
@@ -266,6 +267,19 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		if (key === lastPersistedKey) return;
 		lastPersistedKey = key;
 		pi.appendEntry(ROLE_STATE_ENTRY_TYPE, persisted);
+	}
+
+	function restoreActiveSkillState(branch: readonly SessionEntry[]): void {
+		activeSkillState = reconstructActiveSkills(branch) ?? [];
+		lastPersistedActiveSkillsKey = JSON.stringify({ active: activeSkillState });
+	}
+
+	function persistActiveSkills(): void {
+		const persisted = { active: activeSkillState };
+		const key = JSON.stringify(persisted);
+		if (key === lastPersistedActiveSkillsKey) return;
+		lastPersistedActiveSkillsKey = key;
+		pi.appendEntry(PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE, persisted);
 	}
 
 	function surfaceDiagnostics(ctx: ExtensionContext): void {
@@ -515,12 +529,16 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 			});
 			shortcutRegistered = true;
 		}
-		state = branchState(ctx, reconstructRoleState(ctx.sessionManager.getBranch()) ? "restore" : "startup");
-		await applyRoleState(ctx, state, { persist: !reconstructRoleState(ctx.sessionManager.getBranch()) });
+		const branch = ctx.sessionManager.getBranch();
+		const restoredState = reconstructRoleState(branch);
+		state = branchState(ctx, restoredState ? "restore" : "startup");
+		restoreActiveSkillState(branch);
+		await applyRoleState(ctx, state, { persist: !restoredState });
 	});
 
 	pi.on("session_tree", async (_event, ctx) => {
 		refreshCatalog(ctx.cwd);
+		restoreActiveSkillState(ctx.sessionManager.getBranch());
 		state = branchState(ctx, "restore");
 		await applyRoleState(ctx, state, { persist: false });
 	});

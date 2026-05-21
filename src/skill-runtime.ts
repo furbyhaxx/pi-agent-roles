@@ -1,5 +1,7 @@
+import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
+import { PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE } from "./types.js";
 
 const PER_SKILL_BODY_LIMIT = 8 * 1024;
 const TOTAL_ACTIVE_SKILL_BODY_LIMIT = 32 * 1024;
@@ -42,6 +44,17 @@ export type ActiveSkillBody = {
 	filePath: string;
 	body: string;
 };
+
+function asActiveSkill(value: unknown): ActiveSkill | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const input = value as { name?: unknown; filePath?: unknown; contentHash?: unknown };
+	if (typeof input.name !== "string" || typeof input.filePath !== "string") return undefined;
+	return {
+		name: input.name,
+		filePath: input.filePath,
+		contentHash: typeof input.contentHash === "string" ? input.contentHash : "",
+	};
+}
 
 function byteLength(input: string): number {
 	return Buffer.byteLength(input, "utf8");
@@ -124,6 +137,20 @@ export function applyRequiredSkills(
 
 export function applyInheritLoaded(prevActive: readonly ActiveSkill[], role: RoleLike): ActiveSkill[] {
 	return role.skills.inheritLoaded ? (prevActive as ActiveSkill[]) : [];
+}
+
+export function reconstructActiveSkills(branch: readonly SessionEntry[]): ActiveSkill[] | undefined {
+	for (let index = branch.length - 1; index >= 0; index -= 1) {
+		const entry = branch[index];
+		if (entry.type !== "custom" || entry.customType !== PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE) continue;
+		const data = entry.data as { active?: unknown } | undefined;
+		if (!Array.isArray(data?.active)) return [];
+		return data.active.flatMap((skill) => {
+			const normalized = asActiveSkill(skill);
+			return normalized ? [normalized] : [];
+		});
+	}
+	return undefined;
 }
 
 export function readActiveSkillBodies(activeSet: readonly ActiveSkill[]): ActiveSkillBody[] {

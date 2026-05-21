@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyInheritLoaded, applyRequiredSkills, readActiveSkillBodies, type ActiveSkill } from "../src/skill-runtime.js";
+import { applyInheritLoaded, applyRequiredSkills, readActiveSkillBodies, reconstructActiveSkills, type ActiveSkill } from "../src/skill-runtime.js";
+import { PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE } from "../src/types.js";
 
 type SkillAction = "required" | "optional" | "hidden";
 
@@ -91,6 +93,42 @@ await it("applyInheritLoaded clears only when inheritLoaded is false", () => {
 
 	assert.deepEqual(applyInheritLoaded(previous, createRole({ inheritLoaded: false })), []);
 	assert.strictEqual(applyInheritLoaded(previous, createRole({ inheritLoaded: true })), previous);
+});
+
+await it("reconstructActiveSkills returns the newest persisted active set from a branch", () => {
+	const previous: ActiveSkill[] = [
+		{ name: "old-skill", filePath: "/tmp/old-skill/SKILL.md", contentHash: "old-hash" },
+	];
+	const latest: ActiveSkill[] = [
+		{ name: "latest-skill", filePath: "/tmp/latest-skill/SKILL.md", contentHash: "latest-hash" },
+		{ name: "required-skill", filePath: "/tmp/required-skill/SKILL.md", contentHash: "required-hash" },
+	];
+	const branch = [
+		{
+			type: "custom",
+			customType: PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE,
+			data: { active: previous },
+		},
+		{
+			type: "custom",
+			customType: "other-entry",
+			data: { active: [{ name: "ignored", filePath: "/tmp/ignored", contentHash: "ignored" }] },
+		},
+		{
+			type: "custom",
+			customType: PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE,
+			data: { active: latest },
+		},
+	] as SessionEntry[];
+
+	assert.deepEqual(reconstructActiveSkills(branch), latest);
+	assert.deepEqual(
+		reconstructActiveSkills([
+			...branch,
+			{ type: "custom", customType: PI_AGENT_ROLES_ACTIVE_SKILLS_ENTRY_TYPE, data: {} },
+		] as SessionEntry[]),
+		[],
+	);
 });
 
 await it("readActiveSkillBodies truncates per skill and across the total budget", async () => {
