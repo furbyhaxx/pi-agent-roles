@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { reconstructActiveSkills } from "../src/skill-runtime.ts";
+import { reconstructActiveSkills } from "../src/skill-runtime.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "..");
@@ -15,6 +15,11 @@ interface HarnessApi {
 	createTestSession: (options: Record<string, unknown>) => Promise<any>;
 	says: (text: string) => any;
 	when: (prompt: string, actions: any[]) => any;
+}
+
+interface CapturedTurn {
+	activeSkillNames: string[];
+	systemPrompt: string;
 }
 
 let harnessPromise: Promise<HarnessApi> | undefined;
@@ -173,18 +178,19 @@ async function main(): Promise<void> {
 	process.env.PI_CODING_AGENT_DIR = join(cwd, ".agent");
 	writeRoleFixture(cwd);
 
-	const activeSkillsByTurn: string[][] = [];
+	const capturedTurns: CapturedTurn[] = [];
 	const t = await createTestSession({
 		cwd,
 		extensions: [extensionPath],
 		extensionFactories: [
 			(pi: any) => {
-				pi.on("before_agent_start", (_event: any, ctx: any) => {
-					activeSkillsByTurn.push(
-						(reconstructActiveSkills(ctx.sessionManager.getBranch()) ?? [])
+				pi.on("before_agent_start", (event: any, ctx: any) => {
+					capturedTurns.push({
+						activeSkillNames: (reconstructActiveSkills(ctx.sessionManager.getBranch()) ?? [])
 							.map((skill) => skill.name)
 							.sort(),
-					);
+						systemPrompt: String(event.systemPrompt),
+					});
 				});
 			},
 		],
@@ -209,8 +215,11 @@ async function main(): Promise<void> {
 		const skillResult = t.events.toolResultsFor("skill")[0];
 		assert(skillResult, "skill activation result should exist");
 		assert.equal((skillResult.details as any).activated, "carry-skill");
-		assert.deepEqual(activeSkillsByTurn[1], ["carry-skill"]);
-		assert.deepEqual(activeSkillsByTurn[2], ["must-have"]);
+		assert.deepEqual(capturedTurns[1]?.activeSkillNames, ["carry-skill"]);
+		assert.deepEqual(capturedTurns[2]?.activeSkillNames, ["must-have"]);
+		assert.match(capturedTurns[2]?.systemPrompt ?? "", /## Active Skill Content/);
+		assert.match(capturedTurns[2]?.systemPrompt ?? "", /<active-skill name="must-have" path="[^"]+">/);
+		assert.match(capturedTurns[2]?.systemPrompt ?? "", /# Must Have/);
 
 		console.log("harness role-switch-skills tests passed");
 	} finally {

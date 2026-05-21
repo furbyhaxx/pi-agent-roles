@@ -601,7 +601,8 @@ export default function piAgentRolesExtension(pi: ExtensionAPI): void {
 		const builtin = buildSystemPrompt(baseOptions);
 		const roleStateContext = currentRoleStateContext();
 		const inScopeSkills = filterSkillsForRole(lastKnownSkills, role);
-		const activeSkillBodies = readActiveSkillBodies(activeSkillState);
+		const activeSkills = [...activeSkillState];
+		const activeSkillBodies = readActiveSkillBodies(activeSkills);
 		const template = loadSystemPromptTemplate(ctx.cwd);
 		const rendered = renderTemplate(template, {
 			builtinSystemPrompt: builtin,
