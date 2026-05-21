@@ -85,9 +85,11 @@ color: orange
 activation: both
 sticky: false
 triggerDescription: Use for general coding and implementation work.
-tools: all
+tools:
+  inherit: true
 skills:
-  "*": optional
+  optional:
+    - "*"
 prompt: append
 ---
 Builder instructions.
@@ -108,12 +110,14 @@ activation: both
 sticky: false
 triggerDescription: Use for review and critique tasks.
 tools:
-  "*": deny
-  read: allow
-  grep: allow
-  find: allow
+  inherit: false
+  allow:
+    - read
+    - grep
+    - find
 skills:
-  "*": hidden
+  hidden:
+    - "*"
 prompt: replace
 ---
 Reviewer instructions.
